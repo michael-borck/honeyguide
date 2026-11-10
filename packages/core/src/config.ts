@@ -30,6 +30,14 @@ export interface PipelineConfig {
   embeddingUrl?: string;
   embeddingModel?: string;
   embeddingApiKey?: string;
+  /**
+   * Optional local System One decision model (Ollama >= 0.35,
+   * `/v1/systemone`). When set it is preferred over embeddings because it
+   * judges relevance directly (ADR-0016).
+   */
+  decisionUrl?: string;
+  decisionModel?: string;
+  decisionApiKey?: string;
   /** Contact email passed to polite-pool APIs (Crossref/OpenAlex). */
   mailto?: string;
   /**
@@ -55,6 +63,9 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PipelineCon
     embeddingUrl: env.EMBEDDING_URL || undefined,
     embeddingModel: env.EMBEDDING_MODEL || 'nomic-embed-text',
     embeddingApiKey: env.EMBEDDING_API_KEY || undefined,
+    decisionUrl: env.DECISION_URL || undefined,
+    decisionModel: env.DECISION_MODEL || 'tev1:4b',
+    decisionApiKey: env.DECISION_API_KEY || undefined,
     mailto: env.HONEYGUIDE_MAILTO || undefined,
   };
 }

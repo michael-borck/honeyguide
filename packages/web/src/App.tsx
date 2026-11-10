@@ -110,9 +110,14 @@ interface Settings {
   apiKey: string;
   model: string;
   youtubeApiKey: string;
-  /** Optional local embeddings endpoint for semantic re-ranking (ADR-0015). */
+  /** Optional local System One decision model for re-ranking (ADR-0016). */
+  decisionUrl: string;
+  decisionModel: string;
+  /** Optional local embeddings endpoint for re-ranking (ADR-0015). */
   embeddingUrl: string;
   embeddingModel: string;
+  /** Which re-ranker to use; off by default to keep the first run fast. */
+  rerankMode: 'off' | 'embeddings' | 'decision';
 }
 
 const SETTINGS_KEY = 'honeyguide-settings';
@@ -121,8 +126,11 @@ const EMPTY_SETTINGS: Settings = {
   apiKey: '',
   model: '',
   youtubeApiKey: '',
+  decisionUrl: '',
+  decisionModel: 'tev1:4b',
   embeddingUrl: '',
   embeddingModel: 'nomic-embed-text',
+  rerankMode: 'off',
 };
 
 function loadSettings(): Settings {
@@ -206,7 +214,15 @@ export function App() {
           }
         : {}),
       ...(settings.youtubeApiKey ? { youtubeApiKey: settings.youtubeApiKey } : {}),
-      ...(settings.embeddingUrl
+      ...(settings.rerankMode === 'decision' && settings.decisionUrl
+        ? {
+            decision: {
+              url: settings.decisionUrl,
+              model: settings.decisionModel || 'tev1:4b',
+            },
+          }
+        : {}),
+      ...(settings.rerankMode === 'embeddings' && settings.embeddingUrl
         ? {
             embeddings: {
               url: settings.embeddingUrl,
@@ -824,6 +840,8 @@ function SettingsPanel({
   const [detecting, setDetecting] = useState(false);
   const [detectNote, setDetectNote] = useState<string | null>(null);
   const [models, setModels] = useState<string[]>([]);
+  const [decisionModels, setDecisionModels] = useState<string[]>([]);
+  const [embeddingModels, setEmbeddingModels] = useState<string[]>([]);
 
   async function detectOllama() {
     setDetecting(true);
@@ -832,15 +850,33 @@ function SettingsPanel({
       const res = await fetch('/api/detect-ollama');
       const data = await res.json();
       if (data.available) {
+        const foundDecision: string[] = Array.isArray(data.decisionModels)
+          ? data.decisionModels
+          : [];
+        const foundEmbedding: string[] = Array.isArray(data.embeddingModels)
+          ? data.embeddingModels
+          : [];
+        setDecisionModels(foundDecision);
+        setEmbeddingModels(foundEmbedding);
         setDraft((d) => ({
           ...d,
           providerUrl: data.url,
           model: data.models[0] ?? d.model,
-          embeddingUrl: d.embeddingUrl || data.url,
-          embeddingModel: d.embeddingModel || 'nomic-embed-text',
+          decisionUrl: foundDecision.length ? d.decisionUrl || data.url : d.decisionUrl,
+          decisionModel: foundDecision[0] ?? (d.decisionModel || 'tev1:4b'),
+          embeddingUrl: foundEmbedding.length ? d.embeddingUrl || data.url : d.embeddingUrl,
+          embeddingModel: foundEmbedding[0] ?? (d.embeddingModel || 'nomic-embed-text'),
         }));
         setModels(data.models);
-        setDetectNote(`Found Ollama with ${data.models.length} model(s).`);
+        const extra = [
+          foundDecision.length ? `${foundDecision.length} decision` : null,
+          foundEmbedding.length ? `${foundEmbedding.length} embedding` : null,
+        ].filter(Boolean);
+        setDetectNote(
+          `Found Ollama with ${data.models.length} model(s)` +
+            (extra.length ? ` (${extra.join(', ')})` : '') +
+            '.',
+        );
       } else {
         setDetectNote('No local Ollama found — install from ollama.com, or use the hosted service as-is.');
       }
@@ -897,19 +933,67 @@ function SettingsPanel({
       </label>
 
       <label style={label}>
-        Embeddings URL (optional — enables semantic re-ranking)
-        <input style={field} value={draft.embeddingUrl} placeholder="http://localhost:11434"
-          onChange={(e) => setDraft({ ...draft, embeddingUrl: e.target.value })} />
+        Re-ranking (how results are ordered)
+        <select style={field} value={draft.rerankMode}
+          onChange={(e) => setDraft({ ...draft, rerankMode: e.target.value as Settings['rerankMode'] })}>
+          <option value="off">Off — fastest, diversity only</option>
+          <option value="embeddings">Embeddings — fast, local</option>
+          <option value="decision">System One decision model — thorough, slower</option>
+        </select>
       </label>
-      <label style={label}>
-        Embedding model
-        <input style={field} value={draft.embeddingModel} placeholder="nomic-embed-text"
-          onChange={(e) => setDraft({ ...draft, embeddingModel: e.target.value })} />
-      </label>
-      <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
-        Re-orders results by relevance before balancing formats. Local only; a good default is
-        <code> nomic-embed-text</code> (<code>ollama pull nomic-embed-text</code>).
-      </p>
+
+      {draft.rerankMode === 'decision' && (
+        <>
+          <label style={label}>
+            Decision model URL
+            <input style={field} value={draft.decisionUrl} placeholder="http://localhost:11434"
+              onChange={(e) => setDraft({ ...draft, decisionUrl: e.target.value })} />
+          </label>
+          <label style={label}>
+            Decision model
+            {decisionModels.length > 0 ? (
+              <select style={field} value={draft.decisionModel}
+                onChange={(e) => setDraft({ ...draft, decisionModel: e.target.value })}>
+                {decisionModels.map((m) => <option key={m}>{m}</option>)}
+              </select>
+            ) : (
+              <input style={field} value={draft.decisionModel} placeholder="tev1:4b"
+                onChange={(e) => setDraft({ ...draft, decisionModel: e.target.value })} />
+            )}
+          </label>
+          <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
+            Local Ollama 0.35+ decision models (<code>ollama pull tev1:4b</code>, <code>nimble</code>,
+            <code> clef</code>) judge relevance directly. Best quality, but a 4B model can add ~20s
+            per request; <code>tev1:0.8b</code> is the faster option.
+          </p>
+        </>
+      )}
+
+      {draft.rerankMode === 'embeddings' && (
+        <>
+          <label style={label}>
+            Embeddings URL
+            <input style={field} value={draft.embeddingUrl} placeholder="http://localhost:11434"
+              onChange={(e) => setDraft({ ...draft, embeddingUrl: e.target.value })} />
+          </label>
+          <label style={label}>
+            Embedding model
+            {embeddingModels.length > 0 ? (
+              <select style={field} value={draft.embeddingModel}
+                onChange={(e) => setDraft({ ...draft, embeddingModel: e.target.value })}>
+                {embeddingModels.map((m) => <option key={m}>{m}</option>)}
+              </select>
+            ) : (
+              <input style={field} value={draft.embeddingModel} placeholder="nomic-embed-text"
+                onChange={(e) => setDraft({ ...draft, embeddingModel: e.target.value })} />
+            )}
+          </label>
+          <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
+            Fast and local; a good default is <code>nomic-embed-text</code>
+            (<code>ollama pull nomic-embed-text</code>).
+          </p>
+        </>
+      )}
 
       <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
         <button onClick={() => { onSave(draft); onClose(); }}

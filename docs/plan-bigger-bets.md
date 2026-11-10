@@ -214,19 +214,24 @@ introducing generation.
   access, citation count where available).
 - Keep format/voice diversity as a **constraint**, not the objective: pick the
   best-scoring item per format, then fill.
-- Runs entirely locally: Ollama embeddings (`/api/embed`, default
-  `nomic-embed-text`) today; an ONNX runtime is the adapter for a
-  no-Ollama desktop later. No external service, no key.
-- If no embedding engine is available, fall back to the current diversity
-  ranking (ADR-0006).
+- Prefer a local System One decision model when available: Ollama 0.35+
+  `/v1/systemone` with `tev1:4b`, `nimble` or `clef`. One Noul question per
+  candidate, scored in one request (ADR-0016).
+- Fall back to local embeddings: Ollama `/api/embed`, default
+  `nomic-embed-text` (ADR-0015). An ONNX runtime is the adapter for a
+  no-Ollama desktop later.
+- If neither is configured, keep the current diversity ranking (ADR-0006).
 
-**Status.** Implemented (ADR-0015): `EmbeddingProvider`, Ollama batch
-embeddings with an in-process cache, cosine scoring, sort-before-diversity,
-Settings panel fields, and a non-fatal `reranker` health entry. On the
-five-topic golden set the relevance proxy moved 72% → 78% with ~1.5–2s extra
-latency. Reproduce with `EMBEDDING_URL=http://localhost:11434 npm run eval`.
-Jev (hosted, high quality) and ONNX (no Ollama) are adapters to add when
-needed.
+**Status.** Implemented (ADR-0015, ADR-0016): `Reranker` + `EmbeddingProvider`
+interfaces, a local System One reranker over `/v1/systemone`, Ollama batch
+embeddings with an in-process cache, sort-before-diversity, Settings panel
+fields with detection, and a non-fatal `reranker` health entry. On the
+five-topic golden set the relevance proxy moved 72% → 78% with embeddings and
+72% → 96% with the `tev1:4b` decision model, at ~8s vs ~26s mean latency. The
+Settings panel therefore exposes an explicit re-ranking mode (Off / Embeddings
+/ Decision model) instead of silently choosing the slowest. Reproduce with
+`DECISION_URL=http://localhost:11434 npm run eval` (or `EMBEDDING_URL=...`).
+TypeSafe Jev (hosted) and ONNX (no Ollama) remain adapters to add when needed.
 
 **Milestones.**
 

@@ -108,11 +108,13 @@ BYO keys are held in browser storage and passed per request only — they are
 ([ADR-0004](docs/adr/0004-byok-keys-never-persisted-server-side.md)).
 
 Result ranking is diversity-first by default. For relevance-first ordering,
-point `EMBEDDING_URL` at Ollama and pull an embedding model
-(`ollama pull nomic-embed-text`, then `EMBEDDING_URL=http://localhost:11434`);
-the desktop/web Settings panel can also set the embeddings URL and model
-per request. Re-ranking is optional and non-fatal
-([ADR-0015](docs/adr/0015-semantic-reranking-with-local-embeddings.md)).
+point `DECISION_URL` at Ollama 0.35+ and pull a decision model
+(`ollama pull tev1:4b`); it uses the local Jev-compatible `/v1/systemone`
+endpoint. If no decision model is configured, `EMBEDDING_URL` with
+`nomic-embed-text` is the fallback. The desktop/web Settings panel can set
+either per request. Re-ranking stays local and is optional/non-fatal
+([ADR-0015](docs/adr/0015-semantic-reranking-with-local-embeddings.md),
+[ADR-0016](docs/adr/0016-local-system-one-decision-models.md)).
 
 ## Architecture
 

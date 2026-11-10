@@ -21,8 +21,8 @@ import { fetchPageMeta } from './enrich/page.js';
 import { lookupUnpaywall } from './enrich/unpaywall.js';
 import { annotate } from './annotate/ladder.js';
 import { diversify } from './rank/diversity.js';
-import { createEmbeddingProvider } from './rank/embeddings.js';
-import { orderByScores, semanticScores } from './rank/semantic.js';
+import { createReranker } from './rank/reranker.js';
+import { orderByScores } from './rank/semantic.js';
 import { deriveQuery } from './retrieval/query.js';
 
 const DEFAULT_MAX_RESULTS = 10;
@@ -52,7 +52,7 @@ export async function suggestResources(
 
   // --- Retrieve, one component per source type -------------------------
   const webProvider = createSearchProvider(config);
-  const embedder = createEmbeddingProvider(config);
+  const reranker = createReranker(config);
   const paperOptions = {
     mailto: config.mailto,
     semanticScholarApiKey: config.semanticScholarApiKey,
@@ -140,13 +140,14 @@ export async function suggestResources(
     );
     const usable = pool.filter((c) => verified.get(c)?.status !== 'dead');
 
-    // Optional semantic re-ranking (ADR-0015): order by relevance first,
+    // Optional re-ranking (ADR-0015, ADR-0016): a local System One decision
+    // model when configured, otherwise embeddings. Order by relevance first,
     // then let diversity balancing pick the best of each format. Failure is
     // non-fatal — the original retrieval order remains.
     let ranked = usable;
-    if (embedder) {
+    if (reranker) {
       try {
-        const scores = await semanticScores(topic, usable, embedder);
+        const scores = await reranker.score(topic, usable);
         ranked = orderByScores(usable, scores);
         health.reranker = 'ok';
       } catch {

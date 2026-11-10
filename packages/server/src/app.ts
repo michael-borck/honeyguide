@@ -50,6 +50,8 @@ interface SuggestBody {
   youtubeApiKey?: string;
   /** Optional per-request local embeddings for semantic re-ranking (ADR-0015). */
   embeddings?: { url?: string; model?: string };
+  /** Optional per-request local System One decision model (ADR-0016). */
+  decision?: { url?: string; model?: string };
   counterpoint?: boolean;
 }
 
@@ -81,7 +83,12 @@ export function createApp(options: AppOptions): express.Express {
         web: webProvider?.name ?? 'unavailable',
         videos: options.pipelineDefaults.youtubeApiKey ? 'configured' : 'unavailable',
         openAccess: options.pipelineDefaults.mailto ? 'configured' : 'unavailable',
-        reranking: options.pipelineDefaults.embeddingUrl ? 'configured' : 'unavailable',
+        reranking:
+          options.pipelineDefaults.decisionUrl || options.pipelineDefaults.embeddingUrl
+            ? 'configured'
+            : 'unavailable',
+        decision: options.pipelineDefaults.decisionUrl ? 'configured' : 'unavailable',
+        embeddings: options.pipelineDefaults.embeddingUrl ? 'configured' : 'unavailable',
       },
     });
   });
@@ -94,14 +101,32 @@ export function createApp(options: AppOptions): express.Express {
     try {
       const r = await fetch(`${base}/api/tags`, { signal: AbortSignal.timeout(2000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
-      const data = (await r.json()) as { models?: Array<{ name?: string }> };
+      const data = (await r.json()) as {
+        models?: Array<{ name?: string; capabilities?: string[] }>;
+      };
+      const models = data.models ?? [];
+      const names = models.map((m) => m.name).filter(Boolean);
       res.json({
         available: true,
         url: base,
-        models: (data.models ?? []).map((m) => m.name).filter(Boolean),
+        models: names,
+        decisionModels: models
+          .filter((m) => m.capabilities?.includes('decision'))
+          .map((m) => m.name)
+          .filter(Boolean),
+        embeddingModels: models
+          .filter((m) => m.capabilities?.includes('embedding'))
+          .map((m) => m.name)
+          .filter(Boolean),
       });
     } catch {
-      res.json({ available: false, url: base, models: [] });
+      res.json({
+        available: false,
+        url: base,
+        models: [],
+        decisionModels: [],
+        embeddingModels: [],
+      });
     }
   });
 
@@ -195,6 +220,12 @@ export function createApp(options: AppOptions): express.Express {
             }
           : {}),
         ...(body.youtubeApiKey ? { youtubeApiKey: body.youtubeApiKey } : {}),
+        ...(body.decision?.url
+          ? {
+              decisionUrl: body.decision.url,
+              decisionModel: body.decision.model || 'tev1:4b',
+            }
+          : {}),
         ...(body.embeddings?.url
           ? {
               embeddingUrl: body.embeddings.url,

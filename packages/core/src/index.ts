@@ -49,6 +49,18 @@ export {
   semanticScores,
   orderByScores,
 } from './rank/semantic.js';
+export {
+  createReranker,
+  EmbeddingReranker,
+  type Reranker,
+} from './rank/reranker.js';
+export {
+  buildSystemOneRequest,
+  parseSystemOneScores,
+  balancedSubset,
+  OllamaDecisionReranker,
+  MAX_DECISION_CANDIDATES,
+} from './rank/decision.js';
 export { classifySource } from './enrich/sourceType.js';
 export { parsePageMeta, fetchPageMeta, type PageMeta } from './enrich/page.js';
 export {

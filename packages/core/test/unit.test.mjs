@@ -38,6 +38,10 @@ import {
   getCachedJson,
   setCachedJson,
   clearJsonCache,
+  buildSystemOneRequest,
+  parseSystemOneScores,
+  balancedSubset,
+  createReranker,
 } from '../dist/index.js';
 
 const resource = (over = {}) => ({
@@ -380,6 +384,75 @@ test('semanticScores ranks the relevant candidate first', async () => {
   const scores = await semanticScores('spaced repetition', [offTopic, relevant], fake);
   assert.ok(scores.get(relevant) > scores.get(offTopic));
   assert.deepEqual(orderByScores([offTopic, relevant], scores), [relevant, offTopic]);
+});
+
+test('buildSystemOneRequest asks one Noul per candidate and truncates text', () => {
+  const candidates = [
+    paperCandidate({ title: 'Relevant paper', description: 'x'.repeat(1000) }),
+    paperCandidate({ title: 'Off topic', description: 'y' }),
+  ];
+  const { request, idToCandidate } = buildSystemOneRequest(
+    'spaced repetition',
+    candidates,
+    'tev1:4b',
+  );
+  assert.equal(request.model, 'tev1:4b');
+  assert.equal(request.state.topic, 'spaced repetition');
+  assert.equal(request.state.candidates.length, 2);
+  assert.equal(Object.keys(request.questions).length, 2);
+  assert.match(request.questions.c0.instructions, /candidates\[0\]/);
+  assert.match(request.questions.c1.instructions, /candidates\[1\]/);
+  assert.ok(request.state.candidates[0].description.length <= 240);
+  assert.equal(idToCandidate.get('c0'), candidates[0]);
+});
+
+test('balancedSubset keeps every format represented within the cap', () => {
+  const papers = Array.from({ length: 20 }, (_, i) =>
+    paperCandidate({ title: `paper ${i}`, format: 'paper' }),
+  );
+  const podcasts = Array.from({ length: 5 }, (_, i) =>
+    paperCandidate({ title: `podcast ${i}`, format: 'podcast' }),
+  );
+  const books = Array.from({ length: 5 }, (_, i) =>
+    paperCandidate({ title: `book ${i}`, format: 'book' }),
+  );
+  const subset = balancedSubset([...papers, ...podcasts, ...books], 12);
+  assert.equal(subset.length, 12);
+  assert.ok(subset.some((c) => c.format === 'podcast'));
+  assert.ok(subset.some((c) => c.format === 'book'));
+  assert.equal(new Set(subset).size, 12);
+});
+
+test('parseSystemOneScores maps Noul answers back to candidates', () => {
+  const a = paperCandidate({ title: 'A' });
+  const b = paperCandidate({ title: 'B' });
+  const idToCandidate = new Map([
+    ['c0', a],
+    ['c1', b],
+  ]);
+  const scores = parseSystemOneScores(
+    {
+      answers: {
+        c0: { type: 'noul', noul: 0.9 },
+        c1: { type: 'noul', noul: 0.1 },
+        bogus: { type: 'noul', noul: 0.5 },
+      },
+    },
+    idToCandidate,
+  );
+  assert.equal(scores.get(a), 0.9);
+  assert.equal(scores.get(b), 0.1);
+  assert.equal(scores.size, 2);
+});
+
+test('createReranker prefers a decision model, then embeddings', () => {
+  assert.equal(createReranker({}), null);
+  assert.equal(createReranker({ decisionUrl: 'http://x' }).name, 'ollama-systemone');
+  assert.equal(createReranker({ embeddingUrl: 'http://x' }).name, 'embeddings');
+  assert.equal(
+    createReranker({ decisionUrl: 'http://x', embeddingUrl: 'http://y' }).name,
+    'ollama-systemone',
+  );
 });
 
 test('CachedEmbeddingProvider embeds only texts it has not seen', async () => {
