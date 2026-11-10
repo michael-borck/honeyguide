@@ -223,7 +223,7 @@ export function createApp(options: AppOptions): express.Express {
         ...(body.decision?.url
           ? {
               decisionUrl: body.decision.url,
-              decisionModel: body.decision.model || 'tev1:4b',
+              decisionModel: body.decision.model || 'tev1:0.8b',
             }
           : {}),
         ...(body.embeddings?.url

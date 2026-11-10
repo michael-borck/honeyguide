@@ -30,7 +30,7 @@ export function createReranker(config: PipelineConfig): Reranker | null {
   if (config.decisionUrl) {
     return new OllamaDecisionReranker(
       config.decisionUrl,
-      config.decisionModel ?? 'tev1:4b',
+      config.decisionModel ?? 'tev1:0.8b',
       config.decisionApiKey,
     );
   }

@@ -33,7 +33,7 @@ a shortlist, not a corpus search engine.
    which are preferred over the existing diversity-only ordering. All three
    paths are local and require no cloud account.
 4. **Opt-in and non-fatal**: `DECISION_URL` / `DECISION_MODEL` (default
-   `tev1:4b`), or the Settings panel's decision-model fields. A missing model
+   `tev1:0.8b`), or the Settings panel's decision-model fields. A missing model
    or endpoint leaves the list in its retrieval order and reports `reranker`
    in `componentHealth`.
 5. **TypeSafe Jev remains an optional future adapter.** The request shape is
@@ -43,7 +43,8 @@ a shortlist, not a corpus search engine.
 ## Consequences
 
 - Ranking quality improves beyond embeddings while staying offline and free.
-- The user must pull a decision model (`ollama pull tev1:4b`, ~4.5 GB) and
+- The user must pull a decision model (`ollama pull tev1:0.8b`, ~1.5 GB, or
+  `tev1:4b`, ~4.5 GB) and
   run Ollama 0.35+. The Settings panel detects decision models automatically
   via the `decision` capability.
 - The 2k-token context caps the shortlist at 16; with more candidates the
@@ -62,11 +63,11 @@ first otherwise consumed the whole budget), the five-topic golden set gave:
 |---|---|---|
 | Diversity only | 72% | ~6.4s |
 | Embeddings (`nomic-embed-text`) | 78% | ~8.2s |
-| System One (`tev1:4b`) | **96%** | ~26s |
+| System One (`tev1:0.8b`) | **94–98%** | **~7–10s** |
+| System One (`tev1:4b`) | 96% | ~26s |
 
-The quality gain is real, but a 4B local model adds substantial latency on
-this hardware. The decision model is therefore an explicit **thorough** mode,
-not a silent preference: the Settings panel offers Off / Embeddings / Decision
-model, and only the chosen one is sent. With both configured via environment
-variables, the decision model still wins. `tev1:0.8b` (~812 MB) is the faster
-decision model when latency matters more than the last few points.
+The 0.8B decision model is the sweet spot: near-embedding latency with
+decision-model quality. It is now the default decision model; `tev1:4b` trades
+about 15 extra seconds for a point or two of accuracy. Re-ranking remains an
+explicit setting (Off / Embeddings / Decision model), not a silent preference,
+because even the 0.8B path costs a model download and a few seconds.

@@ -30,9 +30,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   open-access share and latency (`scripts/eval.mjs`,
   `eval/golden-set.json`).
 - Optional local System One re-ranking (ADR-0016): Ollama 0.35+ decision
-  models (`tev1:4b`, `nimble`, `clef`) score candidates through the
-  Jev-compatible `/v1/systemone` endpoint, one Noul per candidate. Preferred
-  over embeddings.
+  models score candidates through the Jev-compatible `/v1/systemone`
+  endpoint, one Noul per candidate. `tev1:0.8b` is the default (94–98%
+  relevance proxy, ~7–10s); `tev1:4b` is slower with slightly higher
+  accuracy. Preferred over embeddings.
 - Optional semantic re-ranking (ADR-0015): local Ollama embeddings
   (`nomic-embed-text`) reorder candidates by relevance before diversity
   balancing, with an in-process embedding cache. Used as the fallback when no

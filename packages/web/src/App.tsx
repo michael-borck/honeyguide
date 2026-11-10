@@ -127,7 +127,7 @@ const EMPTY_SETTINGS: Settings = {
   model: '',
   youtubeApiKey: '',
   decisionUrl: '',
-  decisionModel: 'tev1:4b',
+  decisionModel: 'tev1:0.8b',
   embeddingUrl: '',
   embeddingModel: 'nomic-embed-text',
   rerankMode: 'off',
@@ -218,7 +218,7 @@ export function App() {
         ? {
             decision: {
               url: settings.decisionUrl,
-              model: settings.decisionModel || 'tev1:4b',
+              model: settings.decisionModel || 'tev1:0.8b',
             },
           }
         : {}),
@@ -863,7 +863,7 @@ function SettingsPanel({
           providerUrl: data.url,
           model: data.models[0] ?? d.model,
           decisionUrl: foundDecision.length ? d.decisionUrl || data.url : d.decisionUrl,
-          decisionModel: foundDecision[0] ?? (d.decisionModel || 'tev1:4b'),
+          decisionModel: foundDecision[0] ?? (d.decisionModel || 'tev1:0.8b'),
           embeddingUrl: foundEmbedding.length ? d.embeddingUrl || data.url : d.embeddingUrl,
           embeddingModel: foundEmbedding[0] ?? (d.embeddingModel || 'nomic-embed-text'),
         }));
@@ -957,14 +957,15 @@ function SettingsPanel({
                 {decisionModels.map((m) => <option key={m}>{m}</option>)}
               </select>
             ) : (
-              <input style={field} value={draft.decisionModel} placeholder="tev1:4b"
+              <input style={field} value={draft.decisionModel} placeholder="tev1:0.8b"
                 onChange={(e) => setDraft({ ...draft, decisionModel: e.target.value })} />
             )}
           </label>
           <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
-            Local Ollama 0.35+ decision models (<code>ollama pull tev1:4b</code>, <code>nimble</code>,
-            <code> clef</code>) judge relevance directly. Best quality, but a 4B model can add ~20s
-            per request; <code>tev1:0.8b</code> is the faster option.
+            Local Ollama 0.35+ decision models judge relevance directly.
+            <code> ollama pull tev1:0.8b</code> is the fast default (~7–10s);
+            <code> tev1:4b</code> is slower (~25s) with slightly higher accuracy;
+            <code> nimble</code> and <code>clef</code> also work.
           </p>
         </>
       )}

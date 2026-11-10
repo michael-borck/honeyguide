@@ -64,7 +64,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PipelineCon
     embeddingModel: env.EMBEDDING_MODEL || 'nomic-embed-text',
     embeddingApiKey: env.EMBEDDING_API_KEY || undefined,
     decisionUrl: env.DECISION_URL || undefined,
-    decisionModel: env.DECISION_MODEL || 'tev1:4b',
+    decisionModel: env.DECISION_MODEL || 'tev1:0.8b',
     decisionApiKey: env.DECISION_API_KEY || undefined,
     mailto: env.HONEYGUIDE_MAILTO || undefined,
   };

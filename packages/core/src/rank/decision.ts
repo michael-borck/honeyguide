@@ -128,14 +128,15 @@ export function parseSystemOneScores(
 /**
  * Local System One reranker (ADR-0016). Ollama >= 0.35 exposes the
  * Jev-compatible `/v1/systemone` endpoint for decision models such as
- * `tev1:4b`, `nimble` and `clef`. No API key, no network, no per-token bill.
+ * `tev1:0.8b`, `tev1:4b`, `nimble` and `clef`. No API key, no network, no
+ * per-token bill.
  */
 export class OllamaDecisionReranker implements Reranker {
   readonly name = 'ollama-systemone';
 
   constructor(
     private readonly baseUrl: string,
-    private readonly model: string = 'tev1:4b',
+    private readonly model: string = 'tev1:0.8b',
     private readonly apiKey?: string,
   ) {}
 
