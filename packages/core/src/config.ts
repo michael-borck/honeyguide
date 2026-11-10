@@ -22,6 +22,14 @@ export interface PipelineConfig {
   serperApiKey?: string;
   /** Semantic Scholar API key; lifts keyless throttling on paper search. */
   semanticScholarApiKey?: string;
+  /**
+   * Optional semantic re-ranking (ADR-0015). Explicit opt-in: set an
+   * embeddings endpoint (usually Ollama) to reorder candidates by relevance
+   * before diversity balancing. With none set, ranking is unchanged.
+   */
+  embeddingUrl?: string;
+  embeddingModel?: string;
+  embeddingApiKey?: string;
   /** Contact email passed to polite-pool APIs (Crossref/OpenAlex). */
   mailto?: string;
   /**
@@ -44,6 +52,9 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PipelineCon
     braveApiKey: env.BRAVE_API_KEY || undefined,
     serperApiKey: env.SERPER_API_KEY || undefined,
     semanticScholarApiKey: env.SEMANTIC_SCHOLAR_API_KEY || undefined,
+    embeddingUrl: env.EMBEDDING_URL || undefined,
+    embeddingModel: env.EMBEDDING_MODEL || 'nomic-embed-text',
+    embeddingApiKey: env.EMBEDDING_API_KEY || undefined,
     mailto: env.HONEYGUIDE_MAILTO || undefined,
   };
 }

@@ -23,6 +23,7 @@ old one.
 | [0012](0012-counterpoint-via-query-inversion.md) | Counterpoint mode via query inversion | Accepted |
 | [0013](0013-multi-source-paper-retrieval-and-search-providers.md) | Multi-source paper retrieval and pluggable web search | Accepted |
 | [0014](0014-portable-collections-shared-teams-deferred.md) | Portable collections now, shared team collections deferred | Accepted |
+| [0015](0015-semantic-reranking-with-local-embeddings.md) | Semantic re-ranking with local embeddings; Jev/ONNX as adapters | Accepted |
 
 ## Adding an ADR
 

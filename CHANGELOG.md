@@ -29,6 +29,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   through the real pipeline and reports coverage, relevance, diversity,
   open-access share and latency (`scripts/eval.mjs`,
   `eval/golden-set.json`).
+- Optional semantic re-ranking (ADR-0015): local Ollama embeddings
+  (`nomic-embed-text`) reorder candidates by relevance before diversity
+  balancing, with an in-process embedding cache. Enabled with `EMBEDDING_URL`
+  or the Settings panel; non-fatal if unavailable. The relevance proxy on the
+  starter golden set rose from 72% to 78%.
+- Retrieval JSON responses are cached in-process for 10 minutes, and a
+  per-host circuit breaker skips an API after repeated failures.
 - Application and design audit (`docs/audit.md`) and a sequenced plan for the
   larger bets (`docs/plan-bigger-bets.md`).
 - Open-access truth: papers with a DOI and `HONEYGUIDE_MAILTO` are checked

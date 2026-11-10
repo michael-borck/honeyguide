@@ -33,8 +33,22 @@ export type {
 } from './retrieval/search/index.js';
 export { mergePaperCandidates, normalizeDoi, normalizeTitle } from './retrieval/paperMerge.js';
 export { parseArxivFeed, arxivEntriesToCandidates, buildArxivQuery } from './retrieval/arxiv.js';
+export { getCachedJson, setCachedJson, clearJsonCache } from './retrieval/cache.js';
+export { CircuitBreaker, defaultBreaker } from './retrieval/breaker.js';
 export { parseEuropePmcResults } from './retrieval/europePmc.js';
 export { diversify } from './rank/diversity.js';
+export {
+  createEmbeddingProvider,
+  OllamaEmbeddingProvider,
+  CachedEmbeddingProvider,
+  type EmbeddingProvider,
+} from './rank/embeddings.js';
+export {
+  cosineSimilarity,
+  candidateText,
+  semanticScores,
+  orderByScores,
+} from './rank/semantic.js';
 export { classifySource } from './enrich/sourceType.js';
 export { parsePageMeta, fetchPageMeta, type PageMeta } from './enrich/page.js';
 export {

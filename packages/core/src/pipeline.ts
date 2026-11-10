@@ -21,6 +21,8 @@ import { fetchPageMeta } from './enrich/page.js';
 import { lookupUnpaywall } from './enrich/unpaywall.js';
 import { annotate } from './annotate/ladder.js';
 import { diversify } from './rank/diversity.js';
+import { createEmbeddingProvider } from './rank/embeddings.js';
+import { orderByScores, semanticScores } from './rank/semantic.js';
 import { deriveQuery } from './retrieval/query.js';
 
 const DEFAULT_MAX_RESULTS = 10;
@@ -50,6 +52,7 @@ export async function suggestResources(
 
   // --- Retrieve, one component per source type -------------------------
   const webProvider = createSearchProvider(config);
+  const embedder = createEmbeddingProvider(config);
   const paperOptions = {
     mailto: config.mailto,
     semanticScholarApiKey: config.semanticScholarApiKey,
@@ -136,7 +139,22 @@ export async function suggestResources(
       }),
     );
     const usable = pool.filter((c) => verified.get(c)?.status !== 'dead');
-    const preliminary = usable.map((c) =>
+
+    // Optional semantic re-ranking (ADR-0015): order by relevance first,
+    // then let diversity balancing pick the best of each format. Failure is
+    // non-fatal — the original retrieval order remains.
+    let ranked = usable;
+    if (embedder) {
+      try {
+        const scores = await semanticScores(topic, usable, embedder);
+        ranked = orderByScores(usable, scores);
+        health.reranker = 'ok';
+      } catch {
+        health.reranker = 'unavailable';
+      }
+    }
+
+    const preliminary = ranked.map((c) =>
       toResource(c, verified.get(c) ?? { status: 'unverified', basis: 'none' }, stance),
     );
     const chosen = diversify(preliminary, count);

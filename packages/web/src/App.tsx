@@ -110,10 +110,20 @@ interface Settings {
   apiKey: string;
   model: string;
   youtubeApiKey: string;
+  /** Optional local embeddings endpoint for semantic re-ranking (ADR-0015). */
+  embeddingUrl: string;
+  embeddingModel: string;
 }
 
 const SETTINGS_KEY = 'honeyguide-settings';
-const EMPTY_SETTINGS: Settings = { providerUrl: '', apiKey: '', model: '', youtubeApiKey: '' };
+const EMPTY_SETTINGS: Settings = {
+  providerUrl: '',
+  apiKey: '',
+  model: '',
+  youtubeApiKey: '',
+  embeddingUrl: '',
+  embeddingModel: 'nomic-embed-text',
+};
 
 function loadSettings(): Settings {
   try {
@@ -196,6 +206,14 @@ export function App() {
           }
         : {}),
       ...(settings.youtubeApiKey ? { youtubeApiKey: settings.youtubeApiKey } : {}),
+      ...(settings.embeddingUrl
+        ? {
+            embeddings: {
+              url: settings.embeddingUrl,
+              model: settings.embeddingModel || 'nomic-embed-text',
+            },
+          }
+        : {}),
       ...(counterpoint ? { counterpoint: true } : {}),
     };
   }
@@ -814,7 +832,13 @@ function SettingsPanel({
       const res = await fetch('/api/detect-ollama');
       const data = await res.json();
       if (data.available) {
-        setDraft((d) => ({ ...d, providerUrl: data.url, model: data.models[0] ?? d.model }));
+        setDraft((d) => ({
+          ...d,
+          providerUrl: data.url,
+          model: data.models[0] ?? d.model,
+          embeddingUrl: d.embeddingUrl || data.url,
+          embeddingModel: d.embeddingModel || 'nomic-embed-text',
+        }));
         setModels(data.models);
         setDetectNote(`Found Ollama with ${data.models.length} model(s).`);
       } else {
@@ -871,6 +895,21 @@ function SettingsPanel({
         <input style={field} type="password" value={draft.youtubeApiKey}
           onChange={(e) => setDraft({ ...draft, youtubeApiKey: e.target.value })} />
       </label>
+
+      <label style={label}>
+        Embeddings URL (optional — enables semantic re-ranking)
+        <input style={field} value={draft.embeddingUrl} placeholder="http://localhost:11434"
+          onChange={(e) => setDraft({ ...draft, embeddingUrl: e.target.value })} />
+      </label>
+      <label style={label}>
+        Embedding model
+        <input style={field} value={draft.embeddingModel} placeholder="nomic-embed-text"
+          onChange={(e) => setDraft({ ...draft, embeddingModel: e.target.value })} />
+      </label>
+      <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
+        Re-orders results by relevance before balancing formats. Local only; a good default is
+        <code> nomic-embed-text</code> (<code>ollama pull nomic-embed-text</code>).
+      </p>
 
       <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
         <button onClick={() => { onSave(draft); onClose(); }}

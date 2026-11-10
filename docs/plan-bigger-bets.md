@@ -214,18 +214,28 @@ introducing generation.
   access, citation count where available).
 - Keep format/voice diversity as a **constraint**, not the objective: pick the
   best-scoring item per format, then fill.
-- Runs entirely locally: a small ONNX embedding model, or Ollama's
-  `/api/embeddings` when configured. No external service, no key.
+- Runs entirely locally: Ollama embeddings (`/api/embed`, default
+  `nomic-embed-text`) today; an ONNX runtime is the adapter for a
+  no-Ollama desktop later. No external service, no key.
 - If no embedding engine is available, fall back to the current diversity
   ranking (ADR-0006).
 
+**Status.** Implemented (ADR-0015): `EmbeddingProvider`, Ollama batch
+embeddings with an in-process cache, cosine scoring, sort-before-diversity,
+Settings panel fields, and a non-fatal `reranker` health entry. On the
+five-topic golden set the relevance proxy moved 72% → 78% with ~1.5–2s extra
+latency. Reproduce with `EMBEDDING_URL=http://localhost:11434 npm run eval`.
+Jev (hosted, high quality) and ONNX (no Ollama) are adapters to add when
+needed.
+
 **Milestones.**
 
-1. Embedding adapter with a local default and an Ollama path.
+1. Embedding adapter with a local default and an Ollama path. Done.
 2. Pure re-rank function: scores in, ordered list out; unit-tested with
-   fixtures.
-3. Wire into the pipeline behind a config flag.
-4. Golden-set A/B against diversity-only ranking.
+   fixtures. Done.
+3. Wire into the pipeline behind a config flag. Done.
+4. Golden-set A/B against diversity-only ranking. Done (starter set).
+5. ONNX adapter, or a Jev adapter for opted-in high-quality re-ranking.
 
 **Risks.** Model download size and CPU cost; mitigate with a small model
 (≤50 MB) and caching embeddings per URL. Embedding drift across models;

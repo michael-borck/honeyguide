@@ -30,6 +30,14 @@ import {
   resourcesFromSaved,
   COLLECTION_KIND,
   COLLECTION_SCHEMA_VERSION,
+  cosineSimilarity,
+  semanticScores,
+  orderByScores,
+  CachedEmbeddingProvider,
+  CircuitBreaker,
+  getCachedJson,
+  setCachedJson,
+  clearJsonCache,
 } from '../dist/index.js';
 
 const resource = (over = {}) => ({
@@ -351,6 +359,68 @@ test('buildArxivQuery uses content phrases and falls back to the raw topic', () 
     'all:"spaced repetition" OR all:"retrieval practice"',
   );
   assert.equal(buildArxivQuery('photosynthesis'), 'all:photosynthesis');
+});
+
+test('cosineSimilarity handles identical, orthogonal and malformed vectors', () => {
+  assert.equal(cosineSimilarity([1, 0], [1, 0]), 1);
+  assert.equal(cosineSimilarity([1, 0], [0, 1]), 0);
+  assert.equal(cosineSimilarity([], []), 0);
+  assert.equal(cosineSimilarity([1], [1, 2]), 0);
+});
+
+test('semanticScores ranks the relevant candidate first', async () => {
+  const fake = {
+    name: 'fake',
+    async embed(texts) {
+      return texts.map((t) => (t.toLowerCase().includes('spaced') ? [1, 0] : [0, 1]));
+    },
+  };
+  const relevant = paperCandidate({ title: 'Spaced repetition in practice' });
+  const offTopic = paperCandidate({ title: 'Supply chain logistics' });
+  const scores = await semanticScores('spaced repetition', [offTopic, relevant], fake);
+  assert.ok(scores.get(relevant) > scores.get(offTopic));
+  assert.deepEqual(orderByScores([offTopic, relevant], scores), [relevant, offTopic]);
+});
+
+test('CachedEmbeddingProvider embeds only texts it has not seen', async () => {
+  let calls = 0;
+  const inner = {
+    name: 'fake',
+    async embed(texts) {
+      calls += 1;
+      return texts.map(() => [1, 0]);
+    },
+  };
+  const cached = new CachedEmbeddingProvider(inner);
+  await cached.embed(['a', 'b']);
+  await cached.embed(['b', 'c']);
+  assert.equal(calls, 2);
+  const all = await cached.embed(['a', 'b', 'c']);
+  assert.equal(all.length, 3);
+  assert.equal(calls, 2);
+});
+
+test('CircuitBreaker opens after failures and closes after the cooldown', () => {
+  const breaker = new CircuitBreaker(2, 1000);
+  const host = 'api.example';
+  assert.equal(breaker.canRequest(host, 0), true);
+  breaker.recordFailure(host, 0);
+  assert.equal(breaker.canRequest(host, 0), true);
+  breaker.recordFailure(host, 0);
+  assert.equal(breaker.canRequest(host, 500), false);
+  assert.equal(breaker.canRequest(host, 1000), true);
+  breaker.recordFailure(host, 1000);
+  breaker.recordSuccess(host);
+  assert.equal(breaker.canRequest(host, 1500), true);
+});
+
+test('JSON cache respects its TTL and can be cleared', () => {
+  clearJsonCache();
+  setCachedJson('k', { a: 1 }, 1000);
+  assert.deepEqual(getCachedJson('k', 1500, 1000), { a: 1 });
+  assert.equal(getCachedJson('k', 2500, 1000), undefined);
+  clearJsonCache();
+  assert.equal(getCachedJson('k', 1500, 1000), undefined);
 });
 
 test('collection files round-trip and carry their topic', () => {

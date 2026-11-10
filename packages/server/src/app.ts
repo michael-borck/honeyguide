@@ -48,6 +48,8 @@ interface SuggestBody {
    */
   provider?: { url?: string; apiKey?: string; model?: string };
   youtubeApiKey?: string;
+  /** Optional per-request local embeddings for semantic re-ranking (ADR-0015). */
+  embeddings?: { url?: string; model?: string };
   counterpoint?: boolean;
 }
 
@@ -79,6 +81,7 @@ export function createApp(options: AppOptions): express.Express {
         web: webProvider?.name ?? 'unavailable',
         videos: options.pipelineDefaults.youtubeApiKey ? 'configured' : 'unavailable',
         openAccess: options.pipelineDefaults.mailto ? 'configured' : 'unavailable',
+        reranking: options.pipelineDefaults.embeddingUrl ? 'configured' : 'unavailable',
       },
     });
   });
@@ -192,6 +195,12 @@ export function createApp(options: AppOptions): express.Express {
             }
           : {}),
         ...(body.youtubeApiKey ? { youtubeApiKey: body.youtubeApiKey } : {}),
+        ...(body.embeddings?.url
+          ? {
+              embeddingUrl: body.embeddings.url,
+              embeddingModel: body.embeddings.model || 'nomic-embed-text',
+            }
+          : {}),
         ...(options.screenshot ? { screenshot: options.screenshot } : {}),
       },
     };
