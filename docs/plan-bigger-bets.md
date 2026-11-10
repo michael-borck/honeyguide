@@ -35,6 +35,9 @@ Without this, every ranking or prompt change is guesswork.
 - **Runner:** a CLI script (`npm run eval`) that calls the pipeline with
   fixtures and prints a diff against the last baseline. Network calls are
   cached to keep runs comparable.
+- **Status:** scaffolded — `scripts/eval.mjs` and `eval/golden-set.json`
+  (five starter topics). `npm run eval -- --json` emits a baseline; grow the
+  set as bets land. Caching and a formal baseline file are still to do.
 - **Acceptance:** a baseline number for every subsequent bet; regressions are
   visible in CI or a checked-in report.
 - **Effort:** M.

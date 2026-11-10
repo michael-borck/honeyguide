@@ -22,6 +22,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   with `suggest --collection`, reopened, and rechecked. `recheck` now accepts
   collections as well as legacy `suggest`/`batch` JSON, and the server exposes
   `POST /api/recheck`. No server storage, accounts or permissions.
+- Web UI: result filters (format, source type, access) and sort (year/title),
+  a verification/access legend, proper loading/empty states, keyboard focus
+  styles and a responsive filter bar.
+- Golden-set evaluation harness: `npm run eval` runs representative topics
+  through the real pipeline and reports coverage, relevance, diversity,
+  open-access share and latency (`scripts/eval.mjs`,
+  `eval/golden-set.json`).
 - Application and design audit (`docs/audit.md`) and a sequenced plan for the
   larger bets (`docs/plan-bigger-bets.md`).
 - Open-access truth: papers with a DOI and `HONEYGUIDE_MAILTO` are checked

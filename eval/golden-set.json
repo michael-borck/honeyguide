@@ -1,0 +1,27 @@
+[
+  {
+    "topic": "spaced repetition and retrieval practice",
+    "expect": ["spaced repetition", "retrieval practice", "testing effect"],
+    "minResources": 4
+  },
+  {
+    "topic": "formative assessment and feedback",
+    "expect": ["formative assessment", "feedback"],
+    "minResources": 4
+  },
+  {
+    "topic": "supply chain resilience",
+    "expect": ["supply chain", "resilience"],
+    "minResources": 4
+  },
+  {
+    "topic": "photosynthesis in plants",
+    "expect": ["photosynthesis", "chlorophyll", "plant"],
+    "minResources": 4
+  },
+  {
+    "topic": "growth mindset in the classroom",
+    "expect": ["growth mindset", "mindset"],
+    "minResources": 4
+  }
+]
