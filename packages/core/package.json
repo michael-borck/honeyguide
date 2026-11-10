@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/honeyguide-core",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "description": "Honeyguide core: retrieval, verification, ranking and rationale. No UI assumptions.",
   "license": "MIT",
   "author": "Michael Borck",

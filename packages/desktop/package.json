@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/honeyguide-desktop",
-  "version": "0.5.0",
+  "version": "0.6.0",
   "private": true,
   "description": "Honeyguide Desktop — Electron shell wrapping the web UI (ADR-0010).",
   "license": "MIT",
