@@ -25,7 +25,7 @@ context for a human to judge it quickly.
 |---|---|---|
 | Author (Michael) | CLI | Unix-philosophy workflow, scripting, batch |
 | Colleagues and students | Hosted web UI | Will not install anything; a URL is the lowest-friction GUI |
-| Power users | Desktop app, self-hosted Docker | Batch, screenshots, local model, no quotas |
+| Power users | Desktop app, self-hosted Docker | Batch, desktop screenshots, local model, no quotas |
 
 The hosted web UI is the primary interface. The CLI is not a secondary
 concern, but it serves one user well rather than many users adequately.
@@ -128,10 +128,11 @@ gate, the parked domain and the SEO farm at a glance.
 3. **Full screenshot** as fallback when og:image is absent, or on explicit
    request.
 
-Layer 3 uses Playwright, which bundles its own Chromium and therefore works
-under either desktop shell. Screenshots are a tier feature, not a default,
-because rendering arbitrary user-supplied URLs server-side is both a cost
-problem and an SSRF surface.
+Layer 3 ships today in the desktop app only, via Electron's own Chromium
+(`webContents.capturePage`). A Playwright engine for the Docker/server image
+is not implemented: rendering arbitrary user-supplied URLs server-side is both
+a cost problem and an SSRF surface, so it needs explicit design before it
+ships. Screenshots are a tier feature, not a default.
 
 ## 8. LLM provider
 
@@ -162,7 +163,7 @@ not by a per-token bill, since inference is self-hosted.
 | | Free hosted | Self-host / Desktop |
 |---|---|---|
 | Input | One topic or document | Batch: a semester of topics at once |
-| Thumbnails | oEmbed and og:image | Full screenshots |
+| Thumbnails | oEmbed and og:image | oEmbed/og:image, plus full screenshots in the desktop app |
 | Verification | Yes | Yes |
 | LLM | Quota'd, or BYO key | Local Ollama, or own key |
 | Export | Markdown | Markdown, LMS HTML, reading list, citations |
@@ -236,7 +237,7 @@ the UI.
 
 - Interview mode
 - Counterpoint mode
-- Full screenshots
+- Full screenshots (desktop only today; server-side Playwright still to design)
 - Learning outcome and cognitive level tagging
 - Library holdings integration and reading list export
 - Link rot re-run mode

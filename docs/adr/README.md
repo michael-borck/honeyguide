@@ -21,6 +21,8 @@ old one.
 | [0010](0010-electron-desktop-shell.md) | Electron for the desktop shell | Accepted |
 | [0011](0011-annotation-ladder.md) | Annotation ladder: LLM rationale degrades to extractive description | Accepted |
 | [0012](0012-counterpoint-via-query-inversion.md) | Counterpoint mode via query inversion | Accepted |
+| [0013](0013-multi-source-paper-retrieval-and-search-providers.md) | Multi-source paper retrieval and pluggable web search | Accepted |
+| [0014](0014-portable-collections-shared-teams-deferred.md) | Portable collections now, shared team collections deferred | Accepted |
 
 ## Adding an ADR
 

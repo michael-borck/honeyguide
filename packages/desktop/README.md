@@ -23,5 +23,7 @@ First-run Ollama detection follows the `talk-buddy` flow: the settings
 panel's "Detect local Ollama" probes localhost and offers the installed
 models, with the hosted service as the equally prominent default.
 
-Planned: batch input (a semester of topics), native full-page screenshot
-capture via Electron's Chromium (`webContents.capturePage`).
+Batch input (a semester of topics) and native full-page screenshot capture
+via Electron's Chromium (`webContents.capturePage`) ship in the current app;
+the server/Docker image does not have a browser engine, so screenshots there
+remain desktop-only.

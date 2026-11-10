@@ -12,8 +12,16 @@ export interface PipelineConfig {
   ollamaModel?: string;
   /** YouTube Data API v3 key; without it video retrieval is unavailable. */
   youtubeApiKey?: string;
-  /** SearXNG instance URL for general-web retrieval; optional. */
+  /**
+   * Web search providers (ADR-0013). SearXNG is preferred when an instance
+   * URL is set; otherwise a keyed provider is used. With none configured the
+   * web component reports unavailable (ADR-0006).
+   */
   searxngUrl?: string;
+  braveApiKey?: string;
+  serperApiKey?: string;
+  /** Semantic Scholar API key; lifts keyless throttling on paper search. */
+  semanticScholarApiKey?: string;
   /** Contact email passed to polite-pool APIs (Crossref/OpenAlex). */
   mailto?: string;
   /**
@@ -33,6 +41,9 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PipelineCon
     ollamaModel: env.OLLAMA_MODEL || undefined,
     youtubeApiKey: env.YOUTUBE_API_KEY || undefined,
     searxngUrl: env.SEARXNG_URL || undefined,
+    braveApiKey: env.BRAVE_API_KEY || undefined,
+    serperApiKey: env.SERPER_API_KEY || undefined,
+    semanticScholarApiKey: env.SEMANTIC_SCHOLAR_API_KEY || undefined,
     mailto: env.HONEYGUIDE_MAILTO || undefined,
   };
 }

@@ -41,8 +41,10 @@ decisions see the [ADRs](adr/). This page is the five-minute orientation.
 For a topic or uploaded document:
 
 1. **Extract** — pull topic signals from the input (PDF, DOCX, TXT, MD).
-2. **Retrieve** — candidate resources across types: papers, videos, podcasts,
-   books, web pages, reports.
+2. **Retrieve** — candidate resources across types: papers (OpenAlex,
+   Semantic Scholar, Europe PMC and arXiv, merged and deduplicated — ADR-0013),
+   videos, podcasts, books, web pages, reports. Web search goes through a
+   pluggable provider (SearXNG, Brave or Serper).
 3. **Verify** — every candidate checked for existence
    ([ADR-0002](adr/0002-extend-cite-sight-core-for-verification.md)):
    DOI resolution, HTTP checks distinguishing paywalled from dead, oEmbed,

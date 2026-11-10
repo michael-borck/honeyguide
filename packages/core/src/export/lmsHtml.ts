@@ -1,4 +1,5 @@
 import type { Resource, SuggestResult } from '../types.js';
+import { verificationText } from '../verify/verify.js';
 
 /**
  * LMS-ready HTML (spec §10): a single self-contained fragment with inline
@@ -10,15 +11,20 @@ export function toLmsHtml(topic: string, result: SuggestResult): string {
   return [
     `<div style="font-family:sans-serif;max-width:46em">`,
     `<h2 style="margin-bottom:4px">Supporting resources: ${escape(topic)}</h2>`,
-    `<p style="color:#555;font-size:0.9em">Every resource below was retrieved and verified — none are AI-generated citations.</p>`,
+    `<p style="color:#555;font-size:0.9em">Every resource below was retrieved from a real source and checked — none are AI-generated citations.</p>`,
     items,
     `</div>`,
   ].join('\n');
 }
 
 function resourceHtml(r: Resource): string {
-  const meta: string[] = [r.format, r.sourceType];
+  const meta: string[] = [
+    r.format,
+    r.sourceType,
+    verificationText(r.verification, r.verificationBasis),
+  ];
   if (r.year) meta.push(String(r.year));
+  if (r.access !== 'unknown') meta.push(`access: ${r.access}`);
   if (r.licensing !== 'unknown') meta.push(r.licensing.replace(/-/g, ' '));
   if (r.accessibilityNotes.length) meta.push(r.accessibilityNotes.join(', '));
   if (r.commerciallyInterested) meta.push('⚠ commercially interested');

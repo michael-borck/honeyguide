@@ -12,15 +12,38 @@ export { suggestResources } from './pipeline.js';
 export { suggestBatch, toBatchMarkdown, type BatchEntry } from './batch.js';
 export { recheckResources, toRecheckMarkdown, type RecheckEntry } from './recheck.js';
 export { deriveCounterQueries, heuristicCounterQueries } from './retrieval/counterpoint.js';
+export {
+  COLLECTION_KIND,
+  COLLECTION_SCHEMA_VERSION,
+  toCollectionFile,
+  parseCollectionFile,
+  resourcesFromSaved,
+  type CollectionFile,
+} from './collection.js';
 export { configFromEnv, type PipelineConfig } from './config.js';
 export { toMarkdown } from './export/markdown.js';
 export { toCitations, formatApa, formatHarvard } from './export/citations.js';
 export { toLmsHtml } from './export/lmsHtml.js';
 export { mapOpenAlexLicensing } from './retrieval/openalexTopical.js';
+export { createSearchProvider } from './retrieval/search/index.js';
+export type {
+  SearchProvider,
+  WebSearchResult,
+  WebSearchProviderName,
+} from './retrieval/search/index.js';
+export { mergePaperCandidates, normalizeDoi, normalizeTitle } from './retrieval/paperMerge.js';
+export { parseArxivFeed, arxivEntriesToCandidates, buildArxivQuery } from './retrieval/arxiv.js';
+export { parseEuropePmcResults } from './retrieval/europePmc.js';
 export { diversify } from './rank/diversity.js';
 export { classifySource } from './enrich/sourceType.js';
 export { parsePageMeta, fetchPageMeta, type PageMeta } from './enrich/page.js';
-export { mapUrlStatus } from './verify/verify.js';
+export {
+  mapUrlStatus,
+  verifyCandidate,
+  verificationText,
+  type VerificationOutcome,
+} from './verify/verify.js';
+export { mapUnpaywallResponse, lookupUnpaywall } from './enrich/unpaywall.js';
 export { deriveQuery, heuristicKeywords, extractPhrases } from './retrieval/query.js';
 export { reconstructAbstract } from './retrieval/openalexTopical.js';
 export type { Candidate } from './retrieval/candidates.js';

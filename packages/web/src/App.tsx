@@ -15,6 +15,8 @@ interface Resource {
   year: number | null;
   venue: string | null;
   verification: string;
+  verificationBasis: string;
+  access: string;
   commerciallyInterested: boolean;
   licensing: string;
   accessibilityNotes: string[];
@@ -30,6 +32,32 @@ interface SuggestResult {
 interface BatchEntry {
   topic: string;
   result: SuggestResult;
+}
+
+interface Health {
+  version?: string;
+  components?: Record<string, string>;
+  capabilities?: Record<string, boolean>;
+  sources?: Record<string, string | string[]>;
+}
+
+/** Portable collection file, shared with the CLI and desktop (ADR-0014). */
+const COLLECTION_KIND = 'honeyguide-collection';
+const COLLECTION_SCHEMA_VERSION = 1;
+
+interface CollectionFile {
+  kind: typeof COLLECTION_KIND;
+  schemaVersion: number;
+  topic: string;
+  createdAt: string;
+  result: SuggestResult;
+}
+
+interface RecheckEntry {
+  resource: Resource;
+  previous: string;
+  current: string;
+  changed: boolean;
 }
 
 /**
@@ -62,6 +90,20 @@ const VERIFY_COLOR: Record<string, string> = {
   unverified: '#666',
 };
 
+/**
+ * The product must not conflate "a database returned this record" with "the
+ * link is live and free". Show the basis explicitly.
+ */
+function verificationLabel(r: Resource): string {
+  if (r.verification !== 'verified') return r.verification;
+  return r.verificationBasis === 'database' ? 'record found' : 'link live';
+}
+
+function healthValue(v: string | string[] | undefined): string {
+  if (!v) return '—';
+  return Array.isArray(v) ? v.join(', ') : v;
+}
+
 export function App() {
   const [topic, setTopic] = useState('');
   const [doc, setDoc] = useState<{ name: string; text: string } | null>(null);
@@ -72,14 +114,19 @@ export function App() {
   const [settings, setSettings] = useState<Settings>(loadSettings);
   const [showSettings, setShowSettings] = useState(false);
   const [llmConfigured, setLlmConfigured] = useState(true);
+  const [health, setHealth] = useState<Health | null>(null);
   const [batchAllowed, setBatchAllowed] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
   const [counterpoint, setCounterpoint] = useState(false);
+  const [collectionLabel, setCollectionLabel] = useState<string | null>(null);
+  const [rechecking, setRechecking] = useState(false);
+  const [recheckEntries, setRecheckEntries] = useState<RecheckEntry[] | null>(null);
 
   useEffect(() => {
     fetch('/api/health')
       .then((r) => r.json())
       .then((h) => {
+        setHealth(h);
         setLlmConfigured(h.components?.llm !== 'unavailable');
         setBatchAllowed(Boolean(h.capabilities?.batch));
       })
@@ -145,6 +192,8 @@ export function App() {
         if (!res.ok) throw new Error((await res.json()).error ?? `HTTP ${res.status}`);
         setBatchResult((await res.json()).entries);
         setResult(null);
+        setRecheckEntries(null);
+        setCollectionLabel(null);
       } else {
         const res = await fetch('/api/suggest', {
           method: 'POST',
@@ -154,6 +203,8 @@ export function App() {
         if (!res.ok) throw new Error((await res.json()).error ?? `HTTP ${res.status}`);
         setResult(await res.json());
         setBatchResult(null);
+        setRecheckEntries(null);
+        setCollectionLabel(null);
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Request failed');
@@ -180,6 +231,65 @@ export function App() {
     a.download = `honeyguide-resources.${extension}`;
     a.click();
     URL.revokeObjectURL(a.href);
+  }
+
+  function saveCollection() {
+    if (!result) return;
+    const file: CollectionFile = {
+      kind: COLLECTION_KIND,
+      schemaVersion: COLLECTION_SCHEMA_VERSION,
+      topic: doc ? doc.name : topic.trim(),
+      createdAt: new Date().toISOString(),
+      result,
+    };
+    const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'honeyguide-collection.json';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+
+  async function openCollection(file: File) {
+    setError(null);
+    try {
+      const data = JSON.parse(await file.text()) as Partial<CollectionFile>;
+      if (data.kind !== COLLECTION_KIND) throw new Error('Not a Honeyguide collection file.');
+      if (typeof data.schemaVersion !== 'number' || data.schemaVersion > COLLECTION_SCHEMA_VERSION) {
+        throw new Error('This collection was made with a newer version of Honeyguide.');
+      }
+      if (!data.result || !Array.isArray(data.result.resources)) {
+        throw new Error('Collection is missing its resources.');
+      }
+      setResult(data.result);
+      setBatchResult(null);
+      setTopic(data.topic ?? '');
+      setDoc(null);
+      setCollectionLabel(data.topic || file.name);
+      setRecheckEntries(null);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Could not open collection');
+    }
+  }
+
+  async function recheckLinks() {
+    if (!result || rechecking) return;
+    setRechecking(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/recheck', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ resources: result.resources }),
+      });
+      if (!res.ok) throw new Error((await res.json()).error ?? `HTTP ${res.status}`);
+      const data = await res.json();
+      setRecheckEntries(data.entries as RecheckEntry[]);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Recheck failed');
+    } finally {
+      setRechecking(false);
+    }
   }
 
   const llmAvailable = llmConfigured || Boolean(settings.providerUrl);
@@ -250,6 +360,19 @@ export function App() {
             />
           </label>
         )}
+        <label style={{ cursor: 'pointer', color: '#4054b2' }}>
+          📂 Open collection
+          <input
+            type="file"
+            accept=".json,application/json"
+            style={{ display: 'none' }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) openCollection(file);
+              e.target.value = '';
+            }}
+          />
+        </label>
         <label style={{ cursor: 'pointer' }}>
           <input type="checkbox" checked={counterpoint} onChange={(e) => setCounterpoint(e.target.checked)} />{' '}
           ⚖ Include counterpoints
@@ -277,9 +400,26 @@ export function App() {
 
       {result && (
         <>
-          <ResultHeader count={result.resources.length} onDownload={download} />
+          {collectionLabel && (
+            <p style={{ fontSize: 13, color: '#555', marginTop: 0 }}>
+              📂 Collection: {collectionLabel}
+            </p>
+          )}
+          <ResultHeader
+            count={result.resources.length}
+            onDownload={download}
+            onSave={saveCollection}
+            onRecheck={recheckLinks}
+            rechecking={rechecking}
+          />
           <ResourceSections resources={result.resources} />
-          <Footers result={result} hasYoutubeKey={Boolean(settings.youtubeApiKey)} openSettings={() => setShowSettings(true)} />
+          {recheckEntries && <RecheckReport entries={recheckEntries} />}
+          <Footers
+            result={result}
+            health={health}
+            hasYoutubeKey={Boolean(settings.youtubeApiKey)}
+            openSettings={() => setShowSettings(true)}
+          />
         </>
       )}
 
@@ -303,11 +443,41 @@ export function App() {
   );
 }
 
-function ResultHeader({ count, onDownload }: { count: number; onDownload: (f: string, e: string) => void }) {
+function ResultHeader({
+  count,
+  onDownload,
+  onSave,
+  onRecheck,
+  rechecking,
+}: {
+  count: number;
+  onDownload: (f: string, e: string) => void;
+  onSave?: () => void;
+  onRecheck?: () => void;
+  rechecking?: boolean;
+}) {
+  const buttonStyle = {
+    padding: '6px 12px',
+    borderRadius: 6,
+    border: '1px solid #bbb',
+    background: '#fff',
+    cursor: 'pointer',
+    fontSize: 13,
+  } as const;
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-      <h2 style={{ fontSize: 18 }}>{count} verified resources</h2>
-      <span style={{ display: 'flex', gap: 6 }}>
+    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
+      <h2 style={{ fontSize: 18 }}>{count} resources</h2>
+      <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+        {onSave && (
+          <button onClick={onSave} style={buttonStyle}>
+            💾 Save collection
+          </button>
+        )}
+        {onRecheck && (
+          <button onClick={onRecheck} disabled={rechecking} style={buttonStyle}>
+            {rechecking ? 'Checking…' : '🔗 Recheck links'}
+          </button>
+        )}
         {(
           [
             ['markdown', 'md', 'Markdown'],
@@ -325,6 +495,32 @@ function ResultHeader({ count, onDownload }: { count: number; onDownload: (f: st
           </button>
         ))}
       </span>
+    </div>
+  );
+}
+
+function RecheckReport({ entries }: { entries: RecheckEntry[] }) {
+  const changed = entries.filter((e) => e.changed);
+  return (
+    <div
+      style={{
+        marginTop: 12,
+        padding: '10px 14px',
+        background: changed.length ? '#fff8e6' : '#f2fbf5',
+        borderRadius: 8,
+        fontSize: 13,
+      }}
+    >
+      <strong>Link check:</strong> {entries.length} resources, {changed.length} changed.
+      {changed.length > 0 && (
+        <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+          {changed.map((e) => (
+            <li key={e.resource.url}>
+              {e.resource.title}: {e.previous} → <strong>{e.current}</strong>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }
@@ -365,7 +561,9 @@ function ResourceCard({ r }: { r: Resource }) {
           {r.stance === 'counterpoint' && <Badge text="⚖ counterpoint" color="#6a3fb2" />}
           <Badge text={r.format} />
           <Badge text={r.sourceType} />
-          <Badge text={r.verification} color={VERIFY_COLOR[r.verification]} />
+          <Badge text={verificationLabel(r)} color={VERIFY_COLOR[r.verification]} />
+          {r.access === 'open' && <Badge text="open access" color="#1a7f4e" />}
+          {r.access === 'subscription' && <Badge text="subscription" color="#a06a00" />}
           {r.licensing !== 'unknown' && <Badge text={r.licensing.replace(/-/g, ' ')} color="#2e6f40" />}
           {r.accessibilityNotes.map((note) => (
             <Badge key={note} text={`♿ ${note}`} color="#376a9e" />
@@ -390,10 +588,12 @@ function ResourceCard({ r }: { r: Resource }) {
 
 function Footers({
   result,
+  health,
   hasYoutubeKey,
   openSettings,
 }: {
   result: SuggestResult;
+  health: Health | null;
   hasYoutubeKey: boolean;
   openSettings: () => void;
 }) {
@@ -422,6 +622,14 @@ function Footers({
           .map(([k, v]) => `${k} ${v === 'ok' ? '✓' : `(${v})`}`)
           .join(' · ')}
       </p>
+      {health?.sources && (
+        <p style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
+          Retrieval: {healthValue(health.sources.papers)} · web {healthValue(health.sources.web)} ·
+          video {healthValue(health.sources.videos)} · open access{' '}
+          {healthValue(health.sources.openAccess)}
+          {health.version ? ` · v${health.version}` : ''}
+        </p>
+      )}
     </>
   );
 }

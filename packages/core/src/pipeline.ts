@@ -1,4 +1,5 @@
 import type {
+  AccessStatus,
   ComponentState,
   Resource,
   Stance,
@@ -12,10 +13,12 @@ import { retrievePodcasts } from './retrieval/podcasts.js';
 import { retrieveBooks } from './retrieval/books.js';
 import { retrieveVideos } from './retrieval/videos.js';
 import { retrieveWeb } from './retrieval/web.js';
+import { createSearchProvider } from './retrieval/search/index.js';
 import { deriveCounterQueries } from './retrieval/counterpoint.js';
-import { verifyCandidate } from './verify/verify.js';
+import { verifyCandidate, type VerificationOutcome } from './verify/verify.js';
 import { classifySource } from './enrich/sourceType.js';
 import { fetchPageMeta } from './enrich/page.js';
+import { lookupUnpaywall } from './enrich/unpaywall.js';
 import { annotate } from './annotate/ladder.js';
 import { diversify } from './rank/diversity.js';
 import { deriveQuery } from './retrieval/query.js';
@@ -46,12 +49,17 @@ export async function suggestResources(
   const topic = await deriveQuery(input, config);
 
   // --- Retrieve, one component per source type -------------------------
+  const webProvider = createSearchProvider(config);
+  const paperOptions = {
+    mailto: config.mailto,
+    semanticScholarApiKey: config.semanticScholarApiKey,
+  };
   const sources: Array<[string, Promise<Candidate[]> | null]> = [
-    ['papers', retrievePapers(topic, config.mailto)],
+    ['papers', retrievePapers(topic, paperOptions)],
     ['podcasts', retrievePodcasts(topic)],
     ['books', retrieveBooks(topic)],
     ['videos', config.youtubeApiKey ? retrieveVideos(topic, config.youtubeApiKey) : null],
-    ['web', config.searxngUrl ? retrieveWeb(topic, config.searxngUrl) : null],
+    ['web', webProvider ? retrieveWeb(topic, webProvider) : null],
   ];
   const settled = await Promise.allSettled(
     sources.map(([, p]) => p ?? Promise.reject(new Error('not configured'))),
@@ -77,8 +85,8 @@ export async function suggestResources(
       const queries = await deriveCounterQueries(topic, config);
       const counterSettled = await Promise.allSettled(
         queries.flatMap((q) => [
-          retrievePapers(q, config.mailto),
-          ...(config.searxngUrl ? [retrieveWeb(q, config.searxngUrl)] : []),
+          retrievePapers(q, paperOptions),
+          ...(webProvider ? [retrieveWeb(q, webProvider)] : []),
         ]),
       );
       const counterCandidates = dedupeAgainst(
@@ -121,15 +129,15 @@ export async function suggestResources(
     count: number,
     stance: Stance,
   ): Promise<Array<{ candidate: Candidate; resource: Resource }>> {
-    const verified = new Map<Candidate, Resource['verification']>();
+    const verified = new Map<Candidate, VerificationOutcome>();
     await Promise.all(
       pool.map(async (c) => {
         verified.set(c, await verifyCandidate(c));
       }),
     );
-    const usable = pool.filter((c) => verified.get(c) !== 'dead');
+    const usable = pool.filter((c) => verified.get(c)?.status !== 'dead');
     const preliminary = usable.map((c) =>
-      toResource(c, verified.get(c) ?? 'unverified', stance),
+      toResource(c, verified.get(c) ?? { status: 'unverified', basis: 'none' }, stance),
     );
     const chosen = diversify(preliminary, count);
     return chosen.map((resource) => ({
@@ -166,6 +174,21 @@ export async function suggestResources(
           // screenshots are a bonus, never a failure
         }
       }
+      // Paywall truth for papers: Unpaywall is authoritative when a DOI and
+      // a contact email are available. Non-fatal; unknown stays unknown.
+      if (
+        cfg.mailto &&
+        candidate.format === 'paper' &&
+        candidate.doi &&
+        resource.access === 'unknown'
+      ) {
+        try {
+          const info = await lookupUnpaywall(candidate.doi, cfg.mailto);
+          if (info) resource.access = info.access;
+        } catch {
+          // enrichment is a bonus, never a failure
+        }
+      }
       if (cfg.ollamaUrl) s.llmAttempts += 1;
       resource.annotation = await annotate(
         annotateTopic,
@@ -192,7 +215,7 @@ function dedupeAgainst(seen: Set<string>, incoming: Candidate[]): Candidate[] {
 
 function toResource(
   candidate: Candidate,
-  verification: Resource['verification'],
+  verification: VerificationOutcome,
   stance: Stance,
 ): Resource {
   const { sourceType, commerciallyInterested } = classifySource(candidate);
@@ -205,13 +228,33 @@ function toResource(
     authors: candidate.authors,
     year: candidate.year,
     venue: candidate.venue ?? null,
-    verification,
+    verification: verification.status,
+    verificationBasis: verification.basis,
+    access: initialAccess(candidate),
     commerciallyInterested,
     licensing: candidate.licensing ?? 'unknown',
     annotation: { source: 'none', text: null },
     thumbnailUrl: candidate.thumbnailUrl ?? null,
     accessibilityNotes: candidate.accessibilityNotes ?? [],
   };
+}
+
+/**
+ * Seed access from the retrieval source's licensing signal. Only papers get
+ * a meaningful value; Unpaywall refines it later when a DOI and mailto exist.
+ */
+function initialAccess(candidate: Candidate): AccessStatus {
+  if (candidate.format !== 'paper') return 'unknown';
+  switch (candidate.licensing) {
+    case 'oer':
+    case 'creative-commons':
+    case 'link-only':
+      return 'open';
+    case 'library-subscription':
+      return 'subscription';
+    default:
+      return 'unknown';
+  }
 }
 
 async function mapLimit<T>(

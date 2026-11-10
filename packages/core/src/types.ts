@@ -26,6 +26,17 @@ export type VerificationStatus =
   | 'dead'
   | 'unverified';
 
+/**
+ * How verification was established. `database` means the record came out of a
+ * database seconds earlier (existence attested); `url-check` means a live HTTP
+ * probe ran; `none` means neither could be done. The distinction matters: a
+ * database record can still sit behind a paywall.
+ */
+export type VerificationBasis = 'database' | 'url-check' | 'none';
+
+/** Access status for a paper: freely readable, subscription, or unknown. */
+export type AccessStatus = 'open' | 'subscription' | 'unknown';
+
 export type LicensingStatus =
   | 'oer'
   | 'creative-commons'
@@ -65,6 +76,10 @@ export interface Resource {
   /** Journal, publisher or channel, when known. */
   venue: string | null;
   verification: VerificationStatus;
+  /** How that verification was established (database vs URL probe). */
+  verificationBasis: VerificationBasis;
+  /** Paper access status; 'unknown' for non-papers or when no signal exists. */
+  access: AccessStatus;
   /** Consultant reports are marketing artefacts as often as evidence. */
   commerciallyInterested: boolean;
   licensing: LicensingStatus;

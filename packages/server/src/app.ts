@@ -9,6 +9,8 @@ import {
   toCitations,
   toLmsHtml,
   extract,
+  recheckResources,
+  createSearchProvider,
   type PipelineConfig,
   type SuggestResult,
 } from '@michaelborck/honeyguide-core';
@@ -55,6 +57,7 @@ export function createApp(options: AppOptions): express.Express {
 
   // Component health is surfaced to the UI per ADR-0006.
   app.get('/api/health', (_req, res) => {
+    const webProvider = createSearchProvider(options.pipelineDefaults);
     res.json({
       status: 'ok',
       version: options.version ?? '0.0.0',
@@ -67,6 +70,15 @@ export function createApp(options: AppOptions): express.Express {
       capabilities: {
         batch: Boolean(options.allowBatch),
         screenshots: Boolean(options.screenshot),
+      },
+      // Which retrieval sources this instance will actually try (ADR-0013).
+      sources: {
+        papers: ['openalex', 'semantic-scholar', 'europepmc', 'arxiv', 'crossref (fallback)'],
+        books: 'configured',
+        podcasts: 'configured',
+        web: webProvider?.name ?? 'unavailable',
+        videos: options.pipelineDefaults.youtubeApiKey ? 'configured' : 'unavailable',
+        openAccess: options.pipelineDefaults.mailto ? 'configured' : 'unavailable',
       },
     });
   });
@@ -215,6 +227,23 @@ export function createApp(options: AppOptions): express.Express {
       });
     } finally {
       await unlink(tmp).catch(() => {});
+    }
+  });
+
+  // Recheck a saved collection: re-probe links and report what changed. This
+  // is local/stateless — no persistence, no accounts (ADR-0014).
+  app.post('/api/recheck', async (req, res) => {
+    const resources = Array.isArray(req.body?.resources) ? req.body.resources : [];
+    if (!resources.length) {
+      res.status(400).json({ error: 'No resources to recheck.' });
+      return;
+    }
+    try {
+      res.json({ entries: await recheckResources(resources) });
+    } catch (error) {
+      res
+        .status(500)
+        .json({ error: error instanceof Error ? error.message : 'recheck failed' });
     }
   });
 

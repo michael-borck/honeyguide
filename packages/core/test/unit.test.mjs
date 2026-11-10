@@ -16,6 +16,20 @@ import {
   heuristicCounterQueries,
   toRecheckMarkdown,
   toBatchMarkdown,
+  createSearchProvider,
+  mergePaperCandidates,
+  normalizeDoi,
+  parseArxivFeed,
+  parseEuropePmcResults,
+  buildArxivQuery,
+  verifyCandidate,
+  verificationText,
+  mapUnpaywallResponse,
+  toCollectionFile,
+  parseCollectionFile,
+  resourcesFromSaved,
+  COLLECTION_KIND,
+  COLLECTION_SCHEMA_VERSION,
 } from '../dist/index.js';
 
 const resource = (over = {}) => ({
@@ -28,6 +42,8 @@ const resource = (over = {}) => ({
   year: 2024,
   venue: null,
   verification: 'verified',
+  verificationBasis: 'database',
+  access: 'unknown',
   commerciallyInterested: false,
   licensing: 'unknown',
   annotation: { source: 'none', text: null },
@@ -237,6 +253,206 @@ test('toBatchMarkdown renders one section per topic', () => {
   ]);
   assert.match(md, /# Supporting resources: alpha/);
   assert.match(md, /# Supporting resources: beta/);
+});
+
+test('createSearchProvider prefers SearXNG, then keyed providers', () => {
+  assert.equal(createSearchProvider({}), null);
+  assert.equal(
+    createSearchProvider({
+      searxngUrl: 'http://searxng:8080',
+      braveApiKey: 'brave',
+      serperApiKey: 'serper',
+    }).name,
+    'searxng',
+  );
+  assert.equal(createSearchProvider({ braveApiKey: 'brave', serperApiKey: 'serper' }).name, 'brave');
+  assert.equal(createSearchProvider({ serperApiKey: 'serper' }).name, 'serper');
+});
+
+test('normalizeDoi strips resolver prefixes and lower-cases', () => {
+  assert.equal(normalizeDoi('https://doi.org/10.1111/ABC'), '10.1111/abc');
+  assert.equal(normalizeDoi('doi: 10.1000/XyZ'), '10.1000/xyz');
+  assert.equal(normalizeDoi('  10.1/Trim  '), '10.1/trim');
+  assert.equal(normalizeDoi(undefined), undefined);
+});
+
+const paperCandidate = (over = {}) => ({
+  title: 'T',
+  url: 'https://doi.org/10.1/x',
+  format: 'paper',
+  authors: [],
+  year: null,
+  origin: 'openalex',
+  databaseAttested: true,
+  ...over,
+});
+
+test('mergePaperCandidates dedupes by DOI and fills missing metadata', () => {
+  const merged = mergePaperCandidates([
+    [paperCandidate({ title: 'Paper One', doi: '10.1/X', url: 'https://doi.org/10.1/x' })],
+    [
+      paperCandidate({
+        title: 'Paper One',
+        doi: 'https://doi.org/10.1/x',
+        authors: ['Ada Lovelace'],
+        year: 2020,
+        description: 'An abstract',
+        origin: 'semantic-scholar',
+      }),
+    ],
+  ]);
+  assert.equal(merged.length, 1);
+  assert.deepEqual(merged[0].authors, ['Ada Lovelace']);
+  assert.equal(merged[0].year, 2020);
+  assert.equal(merged[0].description, 'An abstract');
+});
+
+test('mergePaperCandidates dedupes by normalised title when no DOI is present', () => {
+  const merged = mergePaperCandidates([
+    [paperCandidate({ title: 'Spaced Repetition: A Review', doi: undefined })],
+    [paperCandidate({ title: 'spaced repetition — a review', doi: undefined, origin: 'arxiv' })],
+  ]);
+  assert.equal(merged.length, 1);
+});
+
+test('mergePaperCandidates keeps distinct papers apart', () => {
+  const merged = mergePaperCandidates([
+    [
+      paperCandidate({ title: 'A', doi: '10.1/a' }),
+      paperCandidate({ title: 'B', doi: '10.1/b' }),
+    ],
+  ]);
+  assert.equal(merged.length, 2);
+});
+
+test('parseArxivFeed extracts entries and strips version suffixes', () => {
+  const xml = `<feed>
+    <entry>
+      <id>http://arxiv.org/abs/2401.01234v2</id>
+      <published>2024-01-03T00:00:00Z</published>
+      <title>Retrieval practice &amp; memory</title>
+      <summary>An   abstract
+      over lines.</summary>
+      <author><name>Ada Lovelace</name></author>
+    </entry>
+  </feed>`;
+  const entries = parseArxivFeed(xml);
+  assert.equal(entries.length, 1);
+  assert.equal(entries[0].title, 'Retrieval practice & memory');
+  assert.equal(entries[0].url, 'https://arxiv.org/abs/2401.01234');
+  assert.equal(entries[0].year, 2024);
+  assert.deepEqual(entries[0].authors, ['Ada Lovelace']);
+  assert.equal(entries[0].summary, 'An abstract over lines.');
+});
+
+test('buildArxivQuery uses content phrases and falls back to the raw topic', () => {
+  assert.equal(
+    buildArxivQuery('spaced repetition and retrieval practice in learning'),
+    'all:"spaced repetition" OR all:"retrieval practice"',
+  );
+  assert.equal(buildArxivQuery('photosynthesis'), 'all:photosynthesis');
+});
+
+test('collection files round-trip and carry their topic', () => {
+  const file = toCollectionFile(
+    'spaced repetition',
+    { resources: [resource()], componentHealth: {} },
+    new Date('2026-11-11T00:00:00Z'),
+  );
+  assert.equal(file.kind, COLLECTION_KIND);
+  assert.equal(file.schemaVersion, COLLECTION_SCHEMA_VERSION);
+  assert.equal(file.createdAt, '2026-11-11T00:00:00.000Z');
+  const parsed = parseCollectionFile(JSON.stringify(file));
+  assert.equal(parsed.topic, 'spaced repetition');
+  assert.equal(parsed.result.resources.length, 1);
+});
+
+test('collection files drop embedded data-URL thumbnails but keep http ones', () => {
+  const embedded = toCollectionFile('t', {
+    resources: [resource({ thumbnailUrl: 'data:image/png;base64,AAAA' })],
+    componentHealth: {},
+  });
+  assert.equal(embedded.result.resources[0].thumbnailUrl, null);
+  const remote = toCollectionFile('t', {
+    resources: [resource({ thumbnailUrl: 'https://example.org/t.png' })],
+    componentHealth: {},
+  });
+  assert.equal(remote.result.resources[0].thumbnailUrl, 'https://example.org/t.png');
+});
+
+test('parseCollectionFile rejects non-collections and newer schemas', () => {
+  assert.throws(() => parseCollectionFile('{"kind":"other"}'), /Not a Honeyguide collection/);
+  assert.throws(
+    () =>
+      parseCollectionFile(
+        JSON.stringify({ kind: COLLECTION_KIND, schemaVersion: 99, result: { resources: [] } }),
+      ),
+    /newer/,
+  );
+});
+
+test('resourcesFromSaved reads collections, suggest and batch output', () => {
+  const r = resource();
+  assert.equal(
+    resourcesFromSaved(toCollectionFile('t', { resources: [r], componentHealth: {} })).length,
+    1,
+  );
+  assert.equal(resourcesFromSaved({ resources: [r] }).length, 1);
+  assert.equal(resourcesFromSaved({ entries: [{ result: { resources: [r] } }] }).length, 1);
+  assert.deepEqual(resourcesFromSaved({}), []);
+});
+
+test('verifyCandidate records database attestation as the verification basis', async () => {
+  const outcome = await verifyCandidate({
+    title: 'P',
+    url: 'https://doi.org/10.1/x',
+    format: 'paper',
+    authors: [],
+    year: null,
+    doi: '10.1/x',
+    origin: 'openalex',
+    databaseAttested: true,
+  });
+  assert.deepEqual(outcome, { status: 'verified', basis: 'database' });
+});
+
+test('verificationText keeps database records distinct from live links', () => {
+  assert.equal(verificationText('verified', 'database'), 'record found');
+  assert.equal(verificationText('verified', 'url-check'), 'link live');
+  assert.equal(verificationText('blocked', 'url-check'), 'blocked');
+});
+
+test('mapUnpaywallResponse distinguishes open from subscription records', () => {
+  assert.deepEqual(
+    mapUnpaywallResponse({
+      is_oa: true,
+      best_oa_location: { url: 'https://oa.example/x', license: 'cc-by' },
+    }),
+    { access: 'open', oaUrl: 'https://oa.example/x', license: 'cc-by' },
+  );
+  assert.equal(mapUnpaywallResponse({ is_oa: false }).access, 'subscription');
+  assert.equal(mapUnpaywallResponse({}).access, 'subscription');
+});
+
+test('parseEuropePmcResults prefers DOI and cleans markup', () => {
+  const [paper] = parseEuropePmcResults([
+    {
+      id: '123',
+      source: 'MED',
+      title: 'A <b>study</b>',
+      doi: '10.1/ABC',
+      pubYear: '2021',
+      authorList: { author: [{ lastName: 'Doe', firstName: 'Jane' }] },
+      journalInfo: { journal: { title: 'Journal' } },
+      abstractText: '<p>An abstract</p>',
+    },
+  ]);
+  assert.equal(paper.title, 'A study');
+  assert.equal(paper.url, 'https://doi.org/10.1/abc');
+  assert.equal(paper.doi, '10.1/abc');
+  assert.deepEqual(paper.authors, ['Doe, Jane']);
+  assert.equal(paper.description, 'An abstract');
+  assert.equal(paper.venue, 'Journal');
 });
 
 test('toMarkdown distinguishes generated rationale from extracted description', () => {

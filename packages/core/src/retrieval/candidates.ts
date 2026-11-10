@@ -17,7 +17,18 @@ export interface Candidate {
   description?: string;
   thumbnailUrl?: string;
   /** Where this candidate came from, for provenance and source-typing. */
-  origin: 'openalex' | 'crossref' | 'itunes' | 'openlibrary' | 'youtube' | 'searxng';
+  origin:
+    | 'openalex'
+    | 'crossref'
+    | 'semantic-scholar'
+    | 'europepmc'
+    | 'arxiv'
+    | 'itunes'
+    | 'openlibrary'
+    | 'youtube'
+    | 'searxng'
+    | 'brave'
+    | 'serper';
   /** True when the origin is an academic database, so existence is already attested. */
   databaseAttested: boolean;
 }

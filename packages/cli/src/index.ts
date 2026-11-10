@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { readFile } from 'node:fs/promises';
 import { Command } from 'commander';
 import {
@@ -13,14 +14,27 @@ import {
   toCitations,
   toLmsHtml,
   extract,
+  toCollectionFile,
+  resourcesFromSaved,
 } from '@michaelborck/honeyguide-core';
+
+function cliVersion(): string {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    ) as { version?: string };
+    return pkg.version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
 
 const program = new Command();
 
 program
   .name('honeyguide')
   .description('Finds and verifies supporting resources for your teaching.')
-  .version('0.1.1');
+  .version(cliVersion());
 
 program
   .command('suggest')
@@ -34,6 +48,7 @@ program
     'markdown',
   )
   .option('--json', 'shorthand for --format json')
+  .option('--collection', 'write a portable collection file (JSON) that can be reopened and shared')
   .option('-c, --counterpoint', 'also surface material disagreeing with the framing')
   .action(
     async (
@@ -43,6 +58,7 @@ program
         maxResults: string;
         format: string;
         json?: boolean;
+        collection?: boolean;
         counterpoint?: boolean;
       },
     ) => {
@@ -64,9 +80,16 @@ program
         },
         configFromEnv(),
       );
-      const format = options.json ? 'json' : options.format;
+      const format = options.collection
+        ? 'collection'
+        : options.json
+          ? 'json'
+          : options.format;
       let out: string;
       switch (format) {
+        case 'collection':
+          out = JSON.stringify(toCollectionFile(label, result), null, 2);
+          break;
         case 'json':
           out = JSON.stringify(result, null, 2);
           break;
@@ -114,14 +137,16 @@ program
 
 program
   .command('recheck')
-  .description('Link-rot re-run: re-verify a previously saved JSON result list')
-  .argument('<file>', 'JSON file from a previous `suggest --json` run')
+  .description('Link-rot re-run: re-verify a saved collection or JSON result list')
+  .argument('<file>', 'collection file, or JSON from `suggest --json` / `batch --json`')
   .option('--json', 'output JSON instead of markdown')
   .action(async (file: string, options: { json?: boolean }) => {
     const saved = JSON.parse(await readFile(file, 'utf8'));
-    const resources = saved.resources ?? saved.entries?.flatMap((e: { result: { resources: unknown[] } }) => e.result.resources);
-    if (!Array.isArray(resources) || !resources.length) {
-      program.error('No resources found in file — expected suggest/batch JSON output.');
+    const resources = resourcesFromSaved(saved);
+    if (!resources.length) {
+      program.error(
+        'No resources found in file — expected a collection, or suggest/batch JSON output.',
+      );
     }
     const entries = await recheckResources(resources);
     process.stdout.write(

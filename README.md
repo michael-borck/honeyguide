@@ -45,8 +45,8 @@ handing you an answer to paste.
 | | Free hosted | Self-host / Desktop |
 |---|---|---|
 | Input | One topic or document | Batch: a semester of topics at once |
-| Sources | Papers, podcasts, books, web | All of those **plus video search**, with your own YouTube key |
-| Thumbnails | oEmbed and og:image | Full screenshots |
+| Sources | Papers (OpenAlex, Semantic Scholar, Europe PMC, arXiv), podcasts, books, web | All of those **plus video search**, with your own YouTube key |
+| Thumbnails | oEmbed and og:image | oEmbed/og:image, plus full screenshots in the desktop app |
 | Verification | Yes | Yes |
 | LLM | Quota'd, or bring your own key | Local Ollama, or your own key |
 | Export | Markdown | Markdown, LMS HTML, reading list, citations |
@@ -88,17 +88,23 @@ Configuration lives in a `.env` file next to `docker-compose.yml` — copy
 `OLLAMA_API_KEY` if your Ollama sits behind an authenticating proxy).
 Alternatively, bring your own API key under **Settings → AI provider**.
 
-Two optional retrieval sources are off until configured: set
-`YOUTUBE_API_KEY` for video results, and enable general-web results with
-the bundled SearXNG metasearch service:
+Video, web search and an extra paper source are optional and off until
+configured. Paper discovery always runs across OpenAlex, Semantic Scholar,
+Europe PMC and arXiv; set `SEMANTIC_SCHOLAR_API_KEY` to lift Semantic
+Scholar's keyless throttling. Set `YOUTUBE_API_KEY` for video results, and
+enable general-web results with the bundled SearXNG metasearch service
+(or a keyed provider — `BRAVE_API_KEY` / `SERPER_API_KEY` — if metasearch is
+blocked):
 
 ```bash
 curl -fsSL --create-dirs -o deploy/searxng/settings.yml \
   https://raw.githubusercontent.com/michael-borck/honeyguide/main/deploy/searxng/settings.yml
 # in .env: SEARXNG_URL=http://searxng:8080 and SEARXNG_SECRET=$(openssl rand -hex 32)
 docker compose --profile websearch up -d
-``` BYO keys are held in browser
-storage and passed per request only — they are **never persisted server-side**
+```
+
+BYO keys are held in browser storage and passed per request only — they are
+**never persisted server-side**
 ([ADR-0004](docs/adr/0004-byok-keys-never-persisted-server-side.md)).
 
 ## Architecture
@@ -131,6 +137,8 @@ request because one enrichment step failed.
 
 - [Project specification](docs/spec.md)
 - [Architecture Decision Records](docs/adr/)
+- [Application and design audit](docs/audit.md)
+- [Plan: the bigger bets](docs/plan-bigger-bets.md)
 - [Contributing guide](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 

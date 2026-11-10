@@ -7,6 +7,38 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Multi-source paper discovery (ADR-0013): OpenAlex, Semantic Scholar, Europe
+  PMC and arXiv run in parallel and are merged, deduplicated by DOI then
+  normalised title; Crossref remains the last-resort fallback. One source
+  failing never fails the request.
+- Pluggable web search (ADR-0013): `SearchProvider` interface with SearXNG,
+  Brave (`BRAVE_API_KEY`) and Serper (`SERPER_API_KEY`) adapters, selected by
+  configuration. Optional `SEMANTIC_SCHOLAR_API_KEY` lifts Semantic Scholar's
+  keyless throttling.
+- Portable collections (ADR-0014): a versioned JSON collection file
+  (`kind: honeyguide-collection`) can be saved from the web/desktop UI, written
+  with `suggest --collection`, reopened, and rechecked. `recheck` now accepts
+  collections as well as legacy `suggest`/`batch` JSON, and the server exposes
+  `POST /api/recheck`. No server storage, accounts or permissions.
+- Application and design audit (`docs/audit.md`) and a sequenced plan for the
+  larger bets (`docs/plan-bigger-bets.md`).
+- Open-access truth: papers with a DOI and `HONEYGUIDE_MAILTO` are checked
+  against Unpaywall and labelled open access vs subscription. Results also
+  carry `verificationBasis` so "record found in a database" is distinct from
+  "link live".
+- `/api/health` reports the configured retrieval sources and the web-search
+  provider.
+
+### Fixed
+
+- CLI `--version` reported a hardcoded `0.1.1`; it now reads the package
+  version.
+- The Docker server reported version `0.0.0`; it now reads `package.json`.
+- Documentation no longer claims server-side/self-host screenshots: full-page
+  capture is desktop-only today.
+
 ## [0.6.0] - 2026-11-10
 
 ### Changed

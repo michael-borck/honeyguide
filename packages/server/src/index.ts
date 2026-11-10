@@ -1,4 +1,5 @@
 import path from 'node:path';
+import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { configFromEnv } from '@michaelborck/honeyguide-core';
 import { loadConfig } from './config.js';
@@ -19,12 +20,25 @@ const webDistPath = path.resolve(
   '../public',
 );
 
+/** Read the server package's version at runtime — `npm_package_version` is
+ *  absent when the container runs `node` directly, which reported 0.0.0. */
+function packageVersion(): string {
+  try {
+    const pkg = JSON.parse(
+      readFileSync(new URL('../package.json', import.meta.url), 'utf8'),
+    ) as { version?: string };
+    return pkg.version ?? '0.0.0';
+  } catch {
+    return '0.0.0';
+  }
+}
+
 const app = createApp({
   pipelineDefaults,
   run: (job, cfg, byok) => runner.run(job, cfg, byok),
   queueAvailable: runner.available,
   webDistPath,
-  version: process.env.npm_package_version,
+  version: packageVersion(),
   // Default on for self-hosters; the hosted free tier sets
   // HONEYGUIDE_ALLOW_BATCH=0 (spec §9: batch is a tier feature).
   allowBatch: process.env.HONEYGUIDE_ALLOW_BATCH !== '0',
