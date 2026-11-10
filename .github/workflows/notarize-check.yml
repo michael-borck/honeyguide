@@ -1,0 +1,90 @@
+name: Notarize Check
+
+# Manual credential check: builds the desktop app, signs it, notarizes the DMG
+# with the App Store Connect API key, and verifies the ticket. Creates no
+# release and uploads no assets.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  notarize-check:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build
+        run: npm run build
+
+      - name: Import macOS signing certificate
+        env:
+          CERT_B64: ${{ secrets.APPLE_CERTIFICATE || secrets.CSC_LINK }}
+          CERT_PWD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD || secrets.CSC_KEY_PASSWORD }}
+        run: |
+          set -e
+          echo "$CERT_B64" | base64 --decode > /tmp/cert.p12
+          security create-keychain -p actions build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p actions build.keychain
+          security set-keychain-settings -lut 21600 build.keychain
+          security import /tmp/cert.p12 -k build.keychain -P "$CERT_PWD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple:,codesign: -s -k actions build.keychain
+          rm /tmp/cert.p12
+          security find-identity -v -p codesigning
+
+      - name: Package Electron app (macOS, no publish)
+        working-directory: packages/desktop
+        run: npx electron-builder --mac --publish=never
+
+      - name: Sign, notarize, and staple DMG
+        working-directory: packages/desktop
+        env:
+          APPLE_API_KEY_CONTENT: ${{ secrets.APPLE_API_KEY_CONTENT }}
+          APPLE_API_KEY_ID: ${{ secrets.APPLE_API_KEY }}
+          APPLE_API_ISSUER: ${{ secrets.APPLE_API_ISSUER }}
+        run: |
+          set -e
+          if [ -z "$APPLE_API_KEY_CONTENT" ] || [ -z "$APPLE_API_KEY_ID" ]; then
+            echo "APPLE_API_KEY_CONTENT/APPLE_API_KEY are required"; exit 1
+          fi
+          KEY_DIR="$RUNNER_TEMP/apple-api"
+          KEY_PATH="$KEY_DIR/AuthKey_${APPLE_API_KEY_ID}.p8"
+          mkdir -p "$KEY_DIR"
+          printf '%s' "$APPLE_API_KEY_CONTENT" | openssl base64 -d -A > "$KEY_PATH"
+          chmod 600 "$KEY_PATH"
+          IDENTITY=$(security find-identity -v -p codesigning \
+            | sed -n 's/.*"\(Developer ID Application:[^"]*\)".*/\1/p' | head -1)
+          test -n "$IDENTITY"
+          for dmg in release/*.dmg; do
+            codesign --sign "$IDENTITY" --timestamp "$dmg"
+            xcrun notarytool submit "$dmg" \
+              --key "$KEY_PATH" \
+              --key-id "$APPLE_API_KEY_ID" \
+              --issuer "$APPLE_API_ISSUER" \
+              --wait
+            xcrun stapler staple "$dmg"
+          done
+
+      - name: Verify notarization and app signature
+        working-directory: packages/desktop
+        run: |
+          set -e
+          DMG=$(find release -maxdepth 1 -name '*.dmg' | head -1)
+          test -n "$DMG"
+          xcrun stapler validate "$DMG"
+          MP=$(hdiutil attach -nobrowse -readonly "$DMG" | awk -F'\t' '/\/Volumes\// {print $NF}' | tail -1)
+          APP=$(find "$MP" -maxdepth 2 -name '*.app' | head -1)
+          test -n "$APP"
+          codesign --verify --deep --strict --verbose=2 "$APP"
+          hdiutil detach "$MP" >/dev/null 2>&1
+          echo "✅ Signed, notarized, and stapled — credentials are good."
