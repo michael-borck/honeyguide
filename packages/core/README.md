@@ -1,6 +1,6 @@
-# @michaelborck/bowerbird-core
+# @michaelborck/honeyguide-core
 
-Shared logic for Bowerbird: retrieval, verification, ranking and rationale.
+Shared logic for Honeyguide: retrieval, verification, ranking and rationale.
 
 - No UI or transport assumptions — the CLI, server, web and desktop surfaces
   all consume this package ([ADR-0001](../../docs/adr/0001-typescript-monorepo-no-python-sidecar.md)).

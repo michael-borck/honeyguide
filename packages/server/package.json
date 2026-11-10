@@ -1,8 +1,8 @@
 {
-  "name": "@michaelborck/bowerbird-server",
+  "name": "@michaelborck/honeyguide-server",
   "version": "0.5.0",
   "private": true,
-  "description": "Bowerbird server: exposes core over JSON, queues long work with BullMQ.",
+  "description": "Honeyguide server: exposes core over JSON, queues long work with BullMQ.",
   "license": "MIT",
   "author": "Michael Borck",
   "type": "module",
@@ -14,7 +14,7 @@
     "dev": "node --watch --experimental-strip-types src/index.ts"
   },
   "dependencies": {
-    "@michaelborck/bowerbird-core": "*",
+    "@michaelborck/honeyguide-core": "*",
     "bullmq": "^5.12.0",
     "express": "^4.19.0",
     "multer": "^1.4.5-lts.1"

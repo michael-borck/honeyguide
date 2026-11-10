@@ -54,7 +54,7 @@ function decodeEntities(s: string): string {
 export async function fetchPageMeta(url: string): Promise<PageMeta> {
   if (isPrivateUrl(url)) throw new Error('refusing to fetch private address');
   const res = await fetch(url, {
-    headers: { accept: 'text/html', 'user-agent': 'bowerbird/0.1 (+https://github.com/michael-borck/bowerbird)' },
+    headers: { accept: 'text/html', 'user-agent': 'honeyguide/0.1 (+https://github.com/michael-borck/honeyguide)' },
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     redirect: 'follow',
   });

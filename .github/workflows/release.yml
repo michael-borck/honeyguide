@@ -55,12 +55,12 @@ jobs:
       - run: npm run build
       - name: Publish core
         if: env.NPM_TOKEN != ''
-        run: npm publish --access public -w @michaelborck/bowerbird-core
+        run: npm publish --access public -w @michaelborck/honeyguide-core
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Publish CLI
         if: env.NPM_TOKEN != ''
-        run: npm publish --access public -w @michaelborck/bowerbird-cli
+        run: npm publish --access public -w @michaelborck/honeyguide-cli
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
       - name: Skipped (no NPM_TOKEN configured)
@@ -97,8 +97,8 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: |
-            ghcr.io/michael-borck/bowerbird
-            ${{ env.DOCKERHUB_USERNAME != '' && 'docker.io/michaelborck/bowerbird' || '' }}
+            ghcr.io/michael-borck/honeyguide
+            ${{ env.DOCKERHUB_USERNAME != '' && 'docker.io/michaelborck/honeyguide' || '' }}
           tags: |
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}

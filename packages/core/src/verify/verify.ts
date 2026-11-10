@@ -3,7 +3,7 @@ import type { VerificationStatus } from '../types.js';
 import type { Candidate } from '../retrieval/candidates.js';
 
 /**
- * Map cite-sight-core's UrlStatus onto Bowerbird's VerificationStatus.
+ * Map cite-sight-core's UrlStatus onto Honeyguide's VerificationStatus.
  * `unverified` means the check could not run or was inconclusive — never
  * silently upgraded (ADR-0006).
  */

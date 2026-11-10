@@ -7,7 +7,7 @@ Only the latest release is supported with security updates.
 ## Reporting a vulnerability
 
 Please report vulnerabilities privately via
-[GitHub Security Advisories](https://github.com/michael-borck/bowerbird/security/advisories/new).
+[GitHub Security Advisories](https://github.com/michael-borck/honeyguide/security/advisories/new).
 Do not open a public issue for security problems.
 
 You can expect an acknowledgement within a week.

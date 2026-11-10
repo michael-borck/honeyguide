@@ -1,4 +1,4 @@
-# Bowerbird documentation
+# Honeyguide documentation
 
 - [Project specification](spec.md) — the full product spec: purpose,
   differentiator, modes, verification layer, tiering, deployment matrix and

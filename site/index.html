@@ -3,8 +3,8 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Bowerbird — verified supporting resources for your teaching</title>
-<meta name="description" content="Give Bowerbird a topic or a document and get back verified videos, papers, podcasts and reports — every link checked, every DOI validated, with a teaching rationale for each.">
+<title>Honeyguide — verified supporting resources for your teaching</title>
+<meta name="description" content="Give Honeyguide a topic or a document and get back verified videos, papers, podcasts and reports — every link checked, every DOI validated, with a teaching rationale for each.">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='0.9em' font-size='90'>🪶</text></svg>">
 <style>
   :root {
@@ -103,12 +103,12 @@
 <header>
   <div class="wrap">
     <nav>
-      <a class="brand" href="#">🪶 Bowerbird</a>
+      <a class="brand" href="#">🪶 Honeyguide</a>
       <div class="links">
-        <a href="#different">Why Bowerbird</a>
+        <a href="#different">Why Honeyguide</a>
         <a href="#tiers">Tiers</a>
         <a href="#selfhost">Self-host</a>
-        <a href="https://github.com/michael-borck/bowerbird">GitHub</a>
+        <a href="https://github.com/michael-borck/honeyguide">GitHub</a>
       </div>
     </nav>
   </div>
@@ -118,13 +118,13 @@
   <div class="wrap">
     <h1>Supporting resources for your teaching,<br><span class="grad">verified before you see them.</span></h1>
     <p class="lead">
-      Give Bowerbird a topic, a worksheet or a reading. Get back videos, papers,
+      Give Honeyguide a topic, a worksheet or a reading. Get back videos, papers,
       podcasts and reports — every link resolved, every DOI validated, each with
       a rationale for why it belongs in your unit.
     </p>
     <div class="cta">
-      <a class="btn btn-primary" href="https://app.bowerbird.eduserver.au">Try it — no install</a>
-      <a class="btn btn-ghost" href="https://github.com/michael-borck/bowerbird/releases/latest">Download desktop app</a>
+      <a class="btn btn-primary" href="https://app.honeyguide.eduserver.au">Try it — no install</a>
+      <a class="btn btn-ghost" href="https://github.com/michael-borck/honeyguide/releases/latest">Download desktop app</a>
       <a class="btn btn-ghost" href="#selfhost">Self-host</a>
     </div>
     <p class="cta-note">Free hosted tier · Open source (MIT) · Your own machine, your own model if you want</p>
@@ -133,11 +133,11 @@
 
 <section id="different">
   <div class="wrap">
-    <div class="kicker">Why Bowerbird</div>
+    <div class="kicker">Why Honeyguide</div>
     <h2>Retrieval is a commodity. Judgement support isn't.</h2>
     <p class="sub">
       Perplexity, NotebookLM, Elicit and Consensus already turn topics into
-      sources. Bowerbird is built for the part that happens after retrieval —
+      sources. Honeyguide is built for the part that happens after retrieval —
       the part a lecturer actually spends time on.
     </p>
     <div class="grid">
@@ -218,31 +218,31 @@
     web UI and server in one container. Bring-your-own API keys are never
     stored server-side — browser storage only, passed per request.</p>
     <pre><code><span class="comment"># Quick start</span>
-docker run -p 3000:3000 ghcr.io/michael-borck/bowerbird:latest
+docker run -p 3000:3000 ghcr.io/michael-borck/honeyguide:latest
 
 <span class="comment"># Or the full stack — just two files, no source checkout:</span>
-mkdir bowerbird &amp;&amp; cd bowerbird
-curl -fsSLO https://raw.githubusercontent.com/michael-borck/bowerbird/main/docker-compose.yml
-curl -fsSL -o .env https://raw.githubusercontent.com/michael-borck/bowerbird/main/.env.example
+mkdir honeyguide &amp;&amp; cd honeyguide
+curl -fsSLO https://raw.githubusercontent.com/michael-borck/honeyguide/main/docker-compose.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/michael-borck/honeyguide/main/.env.example
 docker compose up -d</code></pre>
     <div class="deploy-cols">
       <div class="card">
         <h3>🖥️ Desktop app</h3>
         <p>Batch runs, full screenshots, local model, no quotas — and with
         your own YouTube key, video search too.
-        <a href="https://github.com/michael-borck/bowerbird/releases/latest">Grab the latest installer</a>
+        <a href="https://github.com/michael-borck/honeyguide/releases/latest">Grab the latest installer</a>
         for macOS, Windows or Linux.</p>
       </div>
       <div class="card">
         <h3>⌨️ CLI &amp; library</h3>
-        <p><code>npm install -g @michaelborck/bowerbird-cli</code> for
+        <p><code>npm install -g @michaelborck/honeyguide-cli</code> for
         scripting and batch, or build on
-        <code>@michaelborck/bowerbird-core</code> directly.</p>
+        <code>@michaelborck/honeyguide-core</code> directly.</p>
       </div>
       <div class="card">
         <h3>🐳 Docker images</h3>
         <p>Multi-arch (amd64 / arm64) images on
-        <a href="https://github.com/michael-borck/bowerbird/pkgs/container/bowerbird">GHCR</a>,
+        <a href="https://github.com/michael-borck/honeyguide/pkgs/container/honeyguide">GHCR</a>,
         tagged per release.</p>
       </div>
     </div>
@@ -251,12 +251,12 @@ docker compose up -d</code></pre>
 
 <footer>
   <div class="wrap">
-    <div>🪶 Bowerbird — MIT licensed, built by <a href="https://github.com/michael-borck">Michael Borck</a></div>
+    <div>🪶 Honeyguide — MIT licensed, built by <a href="https://github.com/michael-borck">Michael Borck</a></div>
     <div>
-      <a href="https://app.bowerbird.eduserver.au">Hosted app</a> ·
-      <a href="https://github.com/michael-borck/bowerbird">Source</a> ·
-      <a href="https://github.com/michael-borck/bowerbird/blob/main/docs/spec.md">Spec</a> ·
-      <a href="https://github.com/michael-borck/bowerbird/issues">Issues</a>
+      <a href="https://app.honeyguide.eduserver.au">Hosted app</a> ·
+      <a href="https://github.com/michael-borck/honeyguide">Source</a> ·
+      <a href="https://github.com/michael-borck/honeyguide/blob/main/docs/spec.md">Spec</a> ·
+      <a href="https://github.com/michael-borck/honeyguide/issues">Issues</a>
     </div>
   </div>
 </footer>

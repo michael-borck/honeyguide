@@ -13,12 +13,12 @@ import {
   toCitations,
   toLmsHtml,
   extract,
-} from '@michaelborck/bowerbird-core';
+} from '@michaelborck/honeyguide-core';
 
 const program = new Command();
 
 program
-  .name('bowerbird')
+  .name('honeyguide')
   .description('Finds and verifies supporting resources for your teaching.')
   .version('0.1.1');
 

@@ -2,8 +2,8 @@ import path from 'node:path';
 import type { AddressInfo } from 'node:net';
 import { fileURLToPath } from 'node:url';
 import { app, BrowserWindow } from 'electron';
-import { suggestResources, configFromEnv } from '@michaelborck/bowerbird-core';
-import { createApp } from '@michaelborck/bowerbird-server';
+import { suggestResources, configFromEnv } from '@michaelborck/honeyguide-core';
+import { createApp } from '@michaelborck/honeyguide-server';
 
 const dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -58,7 +58,7 @@ function startEmbeddedServer(): Promise<number> {
   return new Promise((resolve, reject) => {
     const listener = server.listen(0, '127.0.0.1', () => {
       const { port } = listener.address() as AddressInfo;
-      console.log(`bowerbird desktop server on 127.0.0.1:${port}`);
+      console.log(`honeyguide desktop server on 127.0.0.1:${port}`);
       resolve(port);
     });
     listener.on('error', reject);

@@ -1,5 +1,5 @@
 /**
- * Bowerbird core: retrieval, verification, ranking and rationale.
+ * Honeyguide core: retrieval, verification, ranking and rationale.
  *
  * This package has no UI or transport assumptions (ADR-0001). Verification
  * extends @michaelborck/cite-sight-core rather than duplicating it

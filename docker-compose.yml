@@ -5,7 +5,7 @@
 #   docker compose -f docker-compose.yml -f docker-compose.dev.yml up --build
 services:
   app:
-    image: ghcr.io/michael-borck/bowerbird:latest
+    image: ghcr.io/michael-borck/honeyguide:latest
     ports:
       - "3000:3000"
     # Values come from a .env file next to this compose file — copy
@@ -21,7 +21,7 @@ services:
       - OLLAMA_MODEL=${OLLAMA_MODEL:-}
       - YOUTUBE_API_KEY=${YOUTUBE_API_KEY:-}
       - SEARXNG_URL=${SEARXNG_URL:-}
-      - BOWERBIRD_MAILTO=${BOWERBIRD_MAILTO:-}
+      - HONEYGUIDE_MAILTO=${HONEYGUIDE_MAILTO:-}
     depends_on:
       - redis
     restart: unless-stopped
@@ -36,7 +36,7 @@ services:
   #   docker compose --profile websearch up -d
   # and set SEARXNG_URL=http://searxng:8080 (plus SEARXNG_SECRET) in .env.
   # Needs deploy/searxng/settings.yml mounted below — curl it from the repo
-  # if deploying without a checkout (it enables the JSON API Bowerbird uses).
+  # if deploying without a checkout (it enables the JSON API Honeyguide uses).
   searxng:
     image: searxng/searxng:latest
     profiles: ["websearch"]

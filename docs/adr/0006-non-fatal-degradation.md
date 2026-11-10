@@ -5,7 +5,7 @@
 
 ## Context
 
-A Bowerbird result is assembled from several independent enrichment steps:
+A Honeyguide result is assembled from several independent enrichment steps:
 retrieval, link/DOI verification, thumbnail fetching, LLM-generated
 rationale. Each depends on external services that will individually fail.
 Failing the whole request because one step failed would make the tool flaky

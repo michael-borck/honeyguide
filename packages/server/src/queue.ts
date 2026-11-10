@@ -3,7 +3,7 @@ import {
   suggestResources,
   type PipelineConfig,
   type SuggestResult,
-} from '@michaelborck/bowerbird-core';
+} from '@michaelborck/honeyguide-core';
 
 /**
  * BullMQ queue so a single long generation cannot block the box (spec §9).
@@ -24,7 +24,7 @@ interface SuggestJob {
   counterpoint?: boolean;
 }
 
-const QUEUE_NAME = 'bowerbird-suggest';
+const QUEUE_NAME = 'honeyguide-suggest';
 // Generous: counterpoint mode doubles the LLM work, and self-hosted
 // inference on modest hardware is slow. The queue's concurrency cap is
 // what protects the box, not this timeout (spec §9).

@@ -1,6 +1,6 @@
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { configFromEnv } from '@michaelborck/bowerbird-core';
+import { configFromEnv } from '@michaelborck/honeyguide-core';
 import { loadConfig } from './config.js';
 import { createRunner } from './queue.js';
 import { createApp } from './app.js';
@@ -26,10 +26,10 @@ const app = createApp({
   webDistPath,
   version: process.env.npm_package_version,
   // Default on for self-hosters; the hosted free tier sets
-  // BOWERBIRD_ALLOW_BATCH=0 (spec §9: batch is a tier feature).
-  allowBatch: process.env.BOWERBIRD_ALLOW_BATCH !== '0',
+  // HONEYGUIDE_ALLOW_BATCH=0 (spec §9: batch is a tier feature).
+  allowBatch: process.env.HONEYGUIDE_ALLOW_BATCH !== '0',
 });
 
 app.listen(config.port, () => {
-  console.log(`bowerbird server listening on :${config.port}`);
+  console.log(`honeyguide server listening on :${config.port}`);
 });

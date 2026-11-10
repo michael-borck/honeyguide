@@ -1,13 +1,13 @@
-# Contributing to Bowerbird
+# Contributing to Honeyguide
 
-Thanks for your interest in contributing. Bowerbird is a small project with a
+Thanks for your interest in contributing. Honeyguide is a small project with a
 clear scope, so the most valuable contributions are focused ones.
 
 ## Getting started
 
 ```bash
-git clone https://github.com/michael-borck/bowerbird.git
-cd bowerbird
+git clone https://github.com/michael-borck/honeyguide.git
+cd honeyguide
 npm install
 npm run build
 npm test
@@ -29,7 +29,7 @@ Requires Node 20+. The repo is an npm workspaces monorepo — see the
 
 ## Ground rules
 
-- **No generated references.** Everything Bowerbird returns must be
+- **No generated references.** Everything Honeyguide returns must be
   retrieval-grounded and verified. This is the product's reason to exist.
 - **Degradation is non-fatal.** If an enrichment step (verification,
   thumbnails, LLM) fails, return results with the affected field flagged as

@@ -1,6 +1,6 @@
 # Architecture Decision Records
 
-This directory records the significant architectural decisions for Bowerbird,
+This directory records the significant architectural decisions for Honeyguide,
 in the lightweight [MADR](https://adr.github.io/madr/) style. Each ADR is
 immutable once accepted; a change of mind gets a new ADR that supersedes the
 old one.

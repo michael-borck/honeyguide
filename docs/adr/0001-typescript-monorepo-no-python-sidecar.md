@@ -5,7 +5,7 @@
 
 ## Context
 
-Bowerbird spans five surfaces: a library, a CLI, a server, a web UI and a
+Honeyguide spans five surfaces: a library, a CLI, a server, a web UI and a
 desktop shell. A sibling project (`document-lens`) uses an embedded Python
 FastAPI sidecar for ML workloads, and that pattern was a candidate here. The
 workload, however, is HTTP fetching, HTML parsing and LLM API calls — nothing

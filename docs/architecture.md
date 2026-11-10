@@ -6,11 +6,11 @@ decisions see the [ADRs](adr/). This page is the five-minute orientation.
 ## Shape
 
 ```
-                       ┌─────────────────────────────┐
-                       │  @michaelborck/bowerbird-core │
-                       │  retrieval · verification    │
-                       │  ranking · rationale         │
-                       └──────┬──────────────┬───────┘
+                       ┌────────────────────────────────┐
+                       │  @michaelborck/honeyguide-core │
+                       │  retrieval · verification      │
+                       │  ranking · rationale           │
+                       └──────┬──────────────┬──────────┘
                               │              │
                     ┌─────────┴───┐    ┌─────┴──────────────┐
                     │  CLI        │    │  Server (Express)  │

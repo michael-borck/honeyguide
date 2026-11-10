@@ -1,7 +1,7 @@
 // Minimal PWA service worker: network-first with cache fallback for the
 // app shell and assets. API calls are never cached — verified results must
 // always be fresh.
-const CACHE = 'bowerbird-v1';
+const CACHE = 'honeyguide-v1';
 
 self.addEventListener('install', () => {
   self.skipWaiting();

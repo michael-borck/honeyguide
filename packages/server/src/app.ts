@@ -11,7 +11,7 @@ import {
   extract,
   type PipelineConfig,
   type SuggestResult,
-} from '@michaelborck/bowerbird-core';
+} from '@michaelborck/honeyguide-core';
 
 /**
  * The HTTP app, embeddable: the hosted server (index.ts) mounts it behind
@@ -148,7 +148,7 @@ export function createApp(options: AppOptions): express.Express {
     const { pipelineConfig } = mergeConfig(body);
     try {
       const { suggestBatch, toBatchMarkdown } = await import(
-        '@michaelborck/bowerbird-core'
+        '@michaelborck/honeyguide-core'
       );
       const entries = await suggestBatch(topics, pipelineConfig, {
         maxResults: clamp(body.maxResults ?? 10, 1, 25),
@@ -204,7 +204,7 @@ export function createApp(options: AppOptions): express.Express {
       return;
     }
     // cite-sight-core's extractors take a path; use a throwaway temp file.
-    const tmp = path.join(os.tmpdir(), `bowerbird-${randomBytes(8).toString('hex')}${ext}`);
+    const tmp = path.join(os.tmpdir(), `honeyguide-${randomBytes(8).toString('hex')}${ext}`);
     try {
       await writeFile(tmp, file.buffer);
       const doc = await extract(tmp);

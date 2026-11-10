@@ -1,13 +1,13 @@
 {
-  "name": "@michaelborck/bowerbird-desktop",
+  "name": "@michaelborck/honeyguide-desktop",
   "version": "0.5.0",
   "private": true,
-  "description": "Bowerbird Desktop — Electron shell wrapping the web UI (ADR-0010).",
+  "description": "Honeyguide Desktop — Electron shell wrapping the web UI (ADR-0010).",
   "license": "MIT",
   "author": "Michael Borck",
   "repository": {
     "type": "git",
-    "url": "https://github.com/michael-borck/bowerbird.git",
+    "url": "https://github.com/michael-borck/honeyguide.git",
     "directory": "packages/desktop"
   },
   "type": "module",
@@ -18,8 +18,8 @@
     "package": "electron-builder"
   },
   "dependencies": {
-    "@michaelborck/bowerbird-core": "*",
-    "@michaelborck/bowerbird-server": "*",
+    "@michaelborck/honeyguide-core": "*",
+    "@michaelborck/honeyguide-server": "*",
     "electron-updater": "^6.3.0"
   },
   "devDependencies": {

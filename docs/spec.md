@@ -1,12 +1,12 @@
-# Bowerbird: Project Spec
+# Honeyguide: Project Spec
 
 **Status:** draft for spec-to-code
 **Date:** 26 July 2026
-**Repo:** `bowerbird`
-**Package:** `@michaelborck/bowerbird`
-**Host:** `app.bowerbird.eduserver.au` (landing page at `bowerbird.eduserver.au`)
+**Repo:** `honeyguide`
+**Package:** `@michaelborck/honeyguide`
+**Host:** `app.honeyguide.eduserver.au` (landing page at `honeyguide.eduserver.au`)
 
-> Bowerbird finds and verifies supporting resources for your teaching.
+> Honeyguide finds and verifies supporting resources for your teaching.
 
 ---
 
@@ -65,7 +65,7 @@ their judgement actually needs prompting.
 Mirrors the `cite-sight` monorepo layout.
 
 ```
-bowerbird/
+honeyguide/
 ├── packages/
 │   ├── core/        shared logic: retrieval, verification, ranking, rationale
 │   ├── cli/         Commander.js
@@ -194,7 +194,7 @@ become the reading list's biases.
 |---|---|---|
 | CLI | npm global install | v1 |
 | Library | npm package | v1 |
-| Web UI | Hosted at app.bowerbird.eduserver.au | v1 |
+| Web UI | Hosted at app.honeyguide.eduserver.au | v1 |
 | Docker | Image with web UI bundled, Docker Hub + GHCR | v1 |
 | Desktop | Installers with auto-update, signed and notarised | v1 or v1.1 |
 | PWA | Same web UI, manifest and service worker | v1.1 |

@@ -12,9 +12,9 @@ labels: bug
 
 1.
 
-**Where are you running Bowerbird?**
+**Where are you running Honeyguide?**
 
-- [ ] Hosted (app.bowerbird.eduserver.au)
+- [ ] Hosted (app.honeyguide.eduserver.au)
 - [ ] Self-hosted Docker
 - [ ] Desktop app
 - [ ] CLI

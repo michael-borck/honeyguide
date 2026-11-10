@@ -1,5 +1,5 @@
 {
-  "name": "bowerbird",
+  "name": "honeyguide",
   "version": "0.5.0",
   "private": true,
   "description": "Finds and verifies supporting resources for your teaching.",
@@ -7,7 +7,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/michael-borck/bowerbird.git"
+    "url": "https://github.com/michael-borck/honeyguide.git"
   },
   "engines": {
     "node": ">=20"
@@ -16,10 +16,10 @@
     "packages/*"
   ],
   "scripts": {
-    "build": "npm run build -w @michaelborck/bowerbird-core && npm run build -w @michaelborck/bowerbird-cli -w @michaelborck/bowerbird-server -w @michaelborck/bowerbird-web && npm run build -w @michaelborck/bowerbird-desktop",
+    "build": "npm run build -w @michaelborck/honeyguide-core && npm run build -w @michaelborck/honeyguide-cli -w @michaelborck/honeyguide-server -w @michaelborck/honeyguide-web && npm run build -w @michaelborck/honeyguide-desktop",
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
-    "dev:server": "npm run dev -w @michaelborck/bowerbird-server",
-    "dev:web": "npm run dev -w @michaelborck/bowerbird-web"
+    "dev:server": "npm run dev -w @michaelborck/honeyguide-server",
+    "dev:web": "npm run dev -w @michaelborck/honeyguide-web"
   }
 }

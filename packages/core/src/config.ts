@@ -33,6 +33,6 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PipelineCon
     ollamaModel: env.OLLAMA_MODEL || undefined,
     youtubeApiKey: env.YOUTUBE_API_KEY || undefined,
     searxngUrl: env.SEARXNG_URL || undefined,
-    mailto: env.BOWERBIRD_MAILTO || undefined,
+    mailto: env.HONEYGUIDE_MAILTO || undefined,
   };
 }

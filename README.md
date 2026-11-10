@@ -1,24 +1,24 @@
-# Bowerbird
+# Honeyguide
 
 > Finds and verifies supporting resources for your teaching.
 
-Give Bowerbird a topic, a document, a worksheet, or any piece of teaching
+Give Honeyguide a topic, a document, a worksheet, or any piece of teaching
 content, and it returns supporting resources: videos, websites, podcasts,
 research papers, white papers and consultant reports. Every returned resource
 is **verified to exist** and presented with enough context for a human to
 judge it quickly.
 
-**[Try the hosted version](https://app.bowerbird.eduserver.au)** · **[Download the desktop app](https://github.com/michael-borck/bowerbird/releases/latest)** · **[Self-host with Docker](#self-hosting)**
+**[Try the hosted version](https://app.honeyguide.eduserver.au)** · **[Download the desktop app](https://github.com/michael-borck/honeyguide/releases/latest)** · **[Self-host with Docker](#self-hosting)**
 
 ---
 
-## How Bowerbird differs from other topic-to-source tools
+## How Honeyguide differs from other topic-to-source tools
 
 Perplexity, NotebookLM, Elicit and Consensus already do topic-to-sources
-retrieval. Bowerbird's wedge is not retrieval — it is what happens *after*
+retrieval. Honeyguide's wedge is not retrieval — it is what happens *after*
 retrieval:
 
-| | Bowerbird | General topic-to-source tools |
+| | Honeyguide | General topic-to-source tools |
 |---|---|---|
 | **Verification** | Every link resolved, every DOI validated against Crossref / Semantic Scholar / OpenAlex. Retrieval-grounded only — no generated references, ever. | Citations may be generated or unchecked; hallucinated references are a known failure mode. |
 | **Institutional plumbing** | Licensing status (OER, Creative Commons, library-subscription, link-only), library permalinks, accessibility notes (captions, transcripts, tagged PDFs), LMS-ready export. | Links only; the lecturer does the licensing and accessibility legwork. |
@@ -26,7 +26,7 @@ retrieval:
 | **Deliberate diversity** | Balances format and voice by default — one video, one paper, one practitioner piece, an explicit pass for non-Anglo sources — so the retrieval layer's biases don't become the reading list's biases. | Whatever ranks highest, which is often five similar blog posts. |
 | **Deployment freedom** | Hosted, self-hosted Docker, desktop app, CLI, npm library. Local LLM via Ollama — your content never has to leave your machine. | Hosted SaaS only. |
 
-The framing is *conversation, not delegation*: Bowerbird gives you the
+The framing is *conversation, not delegation*: Honeyguide gives you the
 evidence and context to exercise your own judgement quickly, rather than
 handing you an answer to paste.
 
@@ -34,11 +34,11 @@ handing you an answer to paste.
 
 | You are | Use | Get it |
 |---|---|---|
-| A colleague or student | Hosted web UI | [app.bowerbird.eduserver.au](https://app.bowerbird.eduserver.au) |
-| A power user | Desktop app | [Latest release](https://github.com/michael-borck/bowerbird/releases/latest) |
+| A colleague or student | Hosted web UI | [app.honeyguide.eduserver.au](https://app.honeyguide.eduserver.au) |
+| A power user | Desktop app | [Latest release](https://github.com/michael-borck/honeyguide/releases/latest) |
 | Self-hosting | Docker | [See below](#self-hosting) |
-| Scripting / batch | CLI | `npm install -g @michaelborck/bowerbird-cli` |
-| Building on it | Library | `npm install @michaelborck/bowerbird-core` |
+| Scripting / batch | CLI | `npm install -g @michaelborck/honeyguide-cli` |
+| Building on it | Library | `npm install @michaelborck/honeyguide-core` |
 
 ### Free hosted vs self-host / desktop
 
@@ -62,9 +62,9 @@ image with the server. No source checkout needed — the server only needs the
 compose file and a `.env`:
 
 ```bash
-mkdir -p /opt/bowerbird && cd /opt/bowerbird
-curl -fsSLO https://raw.githubusercontent.com/michael-borck/bowerbird/main/docker-compose.yml
-curl -fsSL -o .env https://raw.githubusercontent.com/michael-borck/bowerbird/main/.env.example
+mkdir -p /opt/honeyguide && cd /opt/honeyguide
+curl -fsSLO https://raw.githubusercontent.com/michael-borck/honeyguide/main/docker-compose.yml
+curl -fsSL -o .env https://raw.githubusercontent.com/michael-borck/honeyguide/main/.env.example
 chmod 600 .env   # then edit: OLLAMA_URL, OLLAMA_API_KEY
 docker compose up -d
 # open http://localhost:3000
@@ -74,7 +74,7 @@ Updating is `docker compose pull && docker compose up -d`. To try it without
 the queue, run the image directly:
 
 ```bash
-docker run -p 3000:3000 ghcr.io/michael-borck/bowerbird:latest
+docker run -p 3000:3000 ghcr.io/michael-borck/honeyguide:latest
 ```
 
 To build the image from source instead of pulling from GHCR:
@@ -94,7 +94,7 @@ the bundled SearXNG metasearch service:
 
 ```bash
 curl -fsSL --create-dirs -o deploy/searxng/settings.yml \
-  https://raw.githubusercontent.com/michael-borck/bowerbird/main/deploy/searxng/settings.yml
+  https://raw.githubusercontent.com/michael-borck/honeyguide/main/deploy/searxng/settings.yml
 # in .env: SEARXNG_URL=http://searxng:8080 and SEARXNG_SECRET=$(openssl rand -hex 32)
 docker compose --profile websearch up -d
 ``` BYO keys are held in browser
@@ -107,7 +107,7 @@ TypeScript monorepo. The core is a library with no UI assumptions; the server
 exposes it over JSON; web and desktop are both clients of that same contract.
 
 ```
-bowerbird/
+honeyguide/
 ├── packages/
 │   ├── core/        shared logic: retrieval, verification, ranking, rationale
 │   ├── cli/         Commander.js CLI
@@ -123,7 +123,7 @@ Verification extends [`@michaelborck/cite-sight-core`](https://www.npmjs.com/pac
 rather than duplicating it, so both tools improve at once.
 
 A core principle throughout: **degradation is non-fatal**. If verification,
-thumbnail generation or the LLM is unavailable, Bowerbird still returns
+thumbnail generation or the LLM is unavailable, Honeyguide still returns
 results with the affected fields clearly flagged — it never fails a whole
 request because one enrichment step failed.
 

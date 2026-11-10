@@ -5,12 +5,12 @@
 
 ## Context
 
-The LLM's role in Bowerbird is narrow (ADR-0003): it annotates resources
+The LLM's role in Honeyguide is narrow (ADR-0003): it annotates resources
 that retrieval and verification have already produced — a rationale per
 suggestion, tags, discussion prompts. It never finds or cites sources.
 That raises the question of whether the app can run without an LLM at all.
 
-Most of what Bowerbird attaches to a resource is already non-LLM:
+Most of what Honeyguide attaches to a resource is already non-LLM:
 verification status, source-type label, commercially-interested flag,
 licensing, accessibility notes, thumbnails. And the verification layer
 already fetches material that describes each resource — og:description and

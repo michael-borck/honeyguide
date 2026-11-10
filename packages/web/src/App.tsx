@@ -43,7 +43,7 @@ interface Settings {
   youtubeApiKey: string;
 }
 
-const SETTINGS_KEY = 'bowerbird-settings';
+const SETTINGS_KEY = 'honeyguide-settings';
 const EMPTY_SETTINGS: Settings = { providerUrl: '', apiKey: '', model: '', youtubeApiKey: '' };
 
 function loadSettings(): Settings {
@@ -177,7 +177,7 @@ export function App() {
     const blob = await res.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
-    a.download = `bowerbird-resources.${extension}`;
+    a.download = `honeyguide-resources.${extension}`;
     a.click();
     URL.revokeObjectURL(a.href);
   }
@@ -188,7 +188,7 @@ export function App() {
   return (
     <main style={{ fontFamily: 'system-ui', maxWidth: 760, margin: '3rem auto', padding: '0 1rem', lineHeight: 1.5 }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h1 style={{ marginBottom: 4 }}>🪶 Bowerbird</h1>
+        <h1 style={{ marginBottom: 4 }}>🪶 Honeyguide</h1>
         <button
           onClick={() => setShowSettings((s) => !s)}
           style={{ border: '1px solid #bbb', background: showSettings ? '#eef1ff' : '#fff', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 14 }}
@@ -406,11 +406,11 @@ function Footers({
             Settings
           </button>
           , or{' '}
-          <a href="https://github.com/michael-borck/bowerbird#self-hosting" style={{ color: '#4054b2' }}>
+          <a href="https://github.com/michael-borck/honeyguide#self-hosting" style={{ color: '#4054b2' }}>
             self-host
           </a>{' '}
           / grab the{' '}
-          <a href="https://github.com/michael-borck/bowerbird/releases/latest" style={{ color: '#4054b2' }}>
+          <a href="https://github.com/michael-borck/honeyguide/releases/latest" style={{ color: '#4054b2' }}>
             desktop app
           </a>
           .

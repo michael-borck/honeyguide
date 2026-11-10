@@ -16,7 +16,7 @@ Two facts tipped the decision:
 1. **cite-sight's Electron release pipeline is battle-tested and directly
    copyable**: the persistent-keychain workaround for codesign, the
    `afterSign` notarize hook (electron-builder's own notarize wrapper being
-   unreliable), and the DMG sign → notarise → staple flow. Bowerbird already
+   unreliable), and the DMG sign → notarise → staple flow. Honeyguide already
    mirrors cite-sight's monorepo, workflow shape and verification core, so
    this keeps the two repos structurally twinned.
 2. **The screenshot tier wants a Chromium.** Full-page thumbnails

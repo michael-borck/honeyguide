@@ -1,17 +1,17 @@
 {
-  "name": "@michaelborck/bowerbird-cli",
+  "name": "@michaelborck/honeyguide-cli",
   "version": "0.5.0",
-  "description": "Bowerbird CLI: verified teaching resources from your terminal.",
+  "description": "Honeyguide CLI: verified teaching resources from your terminal.",
   "license": "MIT",
   "author": "Michael Borck",
   "repository": {
     "type": "git",
-    "url": "https://github.com/michael-borck/bowerbird.git",
+    "url": "https://github.com/michael-borck/honeyguide.git",
     "directory": "packages/cli"
   },
   "type": "module",
   "bin": {
-    "bowerbird": "dist/index.js"
+    "honeyguide": "dist/index.js"
   },
   "files": [
     "dist"
@@ -20,7 +20,7 @@
     "build": "tsc -p tsconfig.json"
   },
   "dependencies": {
-    "@michaelborck/bowerbird-core": "*",
+    "@michaelborck/honeyguide-core": "*",
     "commander": "^12.1.0"
   },
   "devDependencies": {
