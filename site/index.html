@@ -65,6 +65,29 @@
   .btn-ghost { border: 1px solid var(--line); color: var(--text); background: var(--bg-soft); }
   .cta-note { margin-top: 14px; color: var(--muted); font-size: .9rem; }
 
+  .dl-platforms {
+    margin-top: 18px; display: flex; gap: 8px; justify-content: center;
+    align-items: center; flex-wrap: wrap;
+  }
+  .dl-label { color: var(--muted); font-size: .85rem; margin-right: 2px; }
+  .dl-chip {
+    display: inline-flex; align-items: center; gap: 7px;
+    padding: 7px 14px; border: 1px solid var(--line); border-radius: 999px;
+    background: var(--bg-soft); color: var(--muted);
+    font-size: .86rem; font-weight: 500; transition: border-color .12s, color .12s, background .12s;
+  }
+  .dl-chip:hover { text-decoration: none; border-color: var(--blue); color: var(--text); }
+  .dl-chip.is-active {
+    color: var(--text); border-color: var(--blue);
+    background: linear-gradient(90deg, rgba(91,140,255,.22), rgba(143,111,255,.22));
+    box-shadow: 0 0 0 1px var(--blue) inset;
+  }
+  .dl-chip.is-active::after {
+    content: "detected"; font-size: .66rem; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--blue-2); font-weight: 700;
+  }
+  .dl-chip.is-disabled { opacity: .5; pointer-events: none; }
+
   section { padding: 72px 0; border-top: 1px solid var(--line); }
   h2 { font-size: 1.9rem; letter-spacing: -.01em; margin-bottom: 10px; }
   .kicker { color: var(--blue-2); text-transform: uppercase; letter-spacing: .12em; font-size: .78rem; font-weight: 700; }
@@ -124,10 +147,16 @@
     </p>
     <div class="cta">
       <a class="btn btn-primary" href="https://app.honeyguide.eduserver.au">Try it — no install</a>
-      <a class="btn btn-ghost" href="https://github.com/michael-borck/honeyguide/releases/latest">Download desktop app</a>
-      <a class="btn btn-ghost" href="#selfhost">Self-host</a>
+      <a class="btn btn-ghost" id="download-primary" href="https://github.com/michael-borck/honeyguide/releases/latest">Download desktop app</a>
     </div>
-    <p class="cta-note">Free hosted tier · Open source (MIT) · Your own machine, your own model if you want</p>
+    <div class="dl-platforms" id="dl-platforms" aria-label="Direct desktop downloads">
+      <span class="dl-label">Desktop:</span>
+      <a class="dl-chip" data-platform="mac-arm64" href="https://github.com/michael-borck/honeyguide/releases/latest">macOS · Apple Silicon</a>
+      <a class="dl-chip" data-platform="mac-x64" href="https://github.com/michael-borck/honeyguide/releases/latest">macOS · Intel</a>
+      <a class="dl-chip" data-platform="win" href="https://github.com/michael-borck/honeyguide/releases/latest">Windows</a>
+      <a class="dl-chip" data-platform="linux" href="https://github.com/michael-borck/honeyguide/releases/latest">Linux</a>
+    </div>
+    <p class="cta-note">Free hosted tier · Open source (MIT) · Your own machine, your own model if you want · <a href="#selfhost">Self-host</a></p>
   </div>
 </div>
 
@@ -260,6 +289,88 @@ docker compose up -d</code></pre>
     </div>
   </div>
 </footer>
+
+<script>
+(() => {
+  const REPO = 'michael-borck/honeyguide';
+  const CACHE_KEY = 'hg-latest-release-v1';
+  const CACHE_MS = 10 * 60 * 1000;
+
+  const PLATFORMS = {
+    'mac-arm64': { label: 'macOS (Apple Silicon)', match: n => /-arm64\.dmg$/i.test(n) },
+    'mac-x64':   { label: 'macOS (Intel)', match: n => /\.dmg$/i.test(n) && !/-arm64\.dmg$/i.test(n) },
+    'win':       { label: 'Windows', match: n => /\.exe$/i.test(n) },
+    'linux':     { label: 'Linux', match: n => /\.AppImage$/i.test(n) },
+  };
+
+  // Assume Apple Silicon on macOS: modern Safari/Chrome report the Intel
+  // UA for compatibility, so the architecture often isn't knowable. The
+  // Intel build is always offered next to it.
+  function detectPlatform() {
+    const uaData = navigator.userAgentData;
+    if (uaData && uaData.platform) {
+      const p = uaData.platform.toLowerCase();
+      if (p.includes('mac')) return 'mac-arm64';
+      if (p.includes('win')) return 'win';
+      if (p.includes('linux')) return 'linux';
+    }
+    const ua = navigator.userAgent || '';
+    if (/android/i.test(ua)) return null;
+    if (/windows/i.test(ua)) return 'win';
+    if (/macintosh|mac os x/i.test(ua)) return 'mac-arm64';
+    if (/linux|x11/i.test(ua)) return 'linux';
+    return null;
+  }
+
+  const platform = detectPlatform();
+  const primary = document.getElementById('download-primary');
+  const chips = Array.from(document.querySelectorAll('.dl-chip'));
+  const activeChip = platform ? chips.find(c => c.dataset.platform === platform) : null;
+
+  if (activeChip) activeChip.classList.add('is-active');
+  if (platform && PLATFORMS[platform]) {
+    primary.textContent = 'Download for ' + PLATFORMS[platform].label;
+  }
+
+  async function latestAssets() {
+    try {
+      const cached = JSON.parse(sessionStorage.getItem(CACHE_KEY) || 'null');
+      if (cached && Date.now() - cached.at < CACHE_MS && Array.isArray(cached.assets)) {
+        return cached.assets;
+      }
+    } catch (_) { /* storage unavailable */ }
+
+    const res = await fetch('https://api.github.com/repos/' + REPO + '/releases/latest', {
+      headers: { Accept: 'application/vnd.github+json' },
+    });
+    if (!res.ok) throw new Error('GitHub API ' + res.status);
+    const release = await res.json();
+    const assets = (release.assets || []).map(a => ({ name: a.name, url: a.browser_download_url }));
+    try {
+      sessionStorage.setItem(CACHE_KEY, JSON.stringify({ at: Date.now(), assets }));
+    } catch (_) { /* ignore */ }
+    return assets;
+  }
+
+  latestAssets().then(assets => {
+    for (const [key, cfg] of Object.entries(PLATFORMS)) {
+      const asset = assets.find(a => cfg.match(a.name));
+      const chip = chips.find(c => c.dataset.platform === key);
+      if (!asset) {
+        if (chip) chip.classList.add('is-disabled');
+        continue;
+      }
+      if (chip) {
+        chip.href = asset.url;
+        chip.title = 'Download ' + asset.name;
+      }
+      if (key === platform) primary.href = asset.url;
+    }
+  }).catch(() => {
+    // Keep the GitHub Releases fallbacks already in the markup.
+  });
+})();
+</script>
 
 </body>
 </html>
