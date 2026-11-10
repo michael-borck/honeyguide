@@ -116,8 +116,17 @@ interface Settings {
   /** Optional local embeddings endpoint for re-ranking (ADR-0015). */
   embeddingUrl: string;
   embeddingModel: string;
-  /** Which re-ranker to use; off by default to keep the first run fast. */
-  rerankMode: 'off' | 'embeddings' | 'decision';
+  /**
+   * 'auto' uses a detected local decision model (or embeddings) on a
+   * localhost/desktop install; explicit modes override it.
+   */
+  rerankMode: 'auto' | 'off' | 'embeddings' | 'decision';
+}
+
+interface DetectedModels {
+  url: string;
+  decisionModels: string[];
+  embeddingModels: string[];
 }
 
 const SETTINGS_KEY = 'honeyguide-settings';
@@ -130,7 +139,7 @@ const EMPTY_SETTINGS: Settings = {
   decisionModel: 'tev1:0.8b',
   embeddingUrl: '',
   embeddingModel: 'nomic-embed-text',
-  rerankMode: 'off',
+  rerankMode: 'auto',
 };
 
 function loadSettings(): Settings {
@@ -174,6 +183,7 @@ export function App() {
   const [showSettings, setShowSettings] = useState(false);
   const [llmConfigured, setLlmConfigured] = useState(true);
   const [health, setHealth] = useState<Health | null>(null);
+  const [detectedModels, setDetectedModels] = useState<DetectedModels | null>(null);
   const [batchAllowed, setBatchAllowed] = useState(false);
   const [batchMode, setBatchMode] = useState(false);
   const [counterpoint, setCounterpoint] = useState(false);
@@ -197,9 +207,72 @@ export function App() {
       .catch(() => {});
   }, []);
 
+  // On a local install (desktop or localhost self-host), discover Ollama
+  // models so the default 'auto' re-ranking can use a decision model.
+  useEffect(() => {
+    const isLocal = ['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+    if (!isLocal) return;
+    fetch('/api/detect-ollama')
+      .then((r) => r.json())
+      .then((data) => {
+        if (!data?.available) return;
+        setDetectedModels({
+          url: String(data.url ?? 'http://localhost:11434'),
+          decisionModels: Array.isArray(data.decisionModels) ? data.decisionModels : [],
+          embeddingModels: Array.isArray(data.embeddingModels) ? data.embeddingModels : [],
+        });
+      })
+      .catch(() => {});
+  }, []);
+
   function saveSettings(next: Settings) {
     setSettings(next);
     localStorage.setItem(SETTINGS_KEY, JSON.stringify(next));
+  }
+
+  /**
+   * Resolve the re-ranking payload for this request. 'auto' uses a detected
+   * local decision model first, then embeddings, and otherwise sends nothing.
+   */
+  function rerankFields() {
+    if (settings.rerankMode === 'decision') {
+      return settings.decisionUrl
+        ? {
+            decision: {
+              url: settings.decisionUrl,
+              model: settings.decisionModel || 'tev1:0.8b',
+            },
+          }
+        : {};
+    }
+    if (settings.rerankMode === 'embeddings') {
+      return settings.embeddingUrl
+        ? {
+            embeddings: {
+              url: settings.embeddingUrl,
+              model: settings.embeddingModel || 'nomic-embed-text',
+            },
+          }
+        : {};
+    }
+    if (settings.rerankMode === 'off') return {};
+    if (detectedModels?.decisionModels.length) {
+      return {
+        decision: {
+          url: detectedModels.url,
+          model: detectedModels.decisionModels[0],
+        },
+      };
+    }
+    if (detectedModels?.embeddingModels.length) {
+      return {
+        embeddings: {
+          url: detectedModels.url,
+          model: detectedModels.embeddingModels[0],
+        },
+      };
+    }
+    return {};
   }
 
   function credentialFields() {
@@ -214,22 +287,7 @@ export function App() {
           }
         : {}),
       ...(settings.youtubeApiKey ? { youtubeApiKey: settings.youtubeApiKey } : {}),
-      ...(settings.rerankMode === 'decision' && settings.decisionUrl
-        ? {
-            decision: {
-              url: settings.decisionUrl,
-              model: settings.decisionModel || 'tev1:0.8b',
-            },
-          }
-        : {}),
-      ...(settings.rerankMode === 'embeddings' && settings.embeddingUrl
-        ? {
-            embeddings: {
-              url: settings.embeddingUrl,
-              model: settings.embeddingModel || 'nomic-embed-text',
-            },
-          }
-        : {}),
+      ...rerankFields(),
       ...(counterpoint ? { counterpoint: true } : {}),
     };
   }
@@ -391,7 +449,13 @@ export function App() {
       </p>
 
       {showSettings && (
-        <SettingsPanel settings={settings} onSave={saveSettings} onClose={() => setShowSettings(false)} />
+        <SettingsPanel
+          settings={settings}
+          detected={detectedModels}
+          onDetected={setDetectedModels}
+          onSave={saveSettings}
+          onClose={() => setShowSettings(false)}
+        />
       )}
 
       <div style={{ display: 'flex', gap: 8, margin: '1.5rem 0 0.5rem', alignItems: 'flex-start' }}>
@@ -829,10 +893,14 @@ function Footers({
 
 function SettingsPanel({
   settings,
+  detected,
+  onDetected,
   onSave,
   onClose,
 }: {
   settings: Settings;
+  detected: DetectedModels | null;
+  onDetected: (detected: DetectedModels) => void;
   onSave: (s: Settings) => void;
   onClose: () => void;
 }) {
@@ -858,6 +926,11 @@ function SettingsPanel({
           : [];
         setDecisionModels(foundDecision);
         setEmbeddingModels(foundEmbedding);
+        onDetected({
+          url: String(data.url ?? 'http://localhost:11434'),
+          decisionModels: foundDecision,
+          embeddingModels: foundEmbedding,
+        });
         setDraft((d) => ({
           ...d,
           providerUrl: data.url,
@@ -936,11 +1009,21 @@ function SettingsPanel({
         Re-ranking (how results are ordered)
         <select style={field} value={draft.rerankMode}
           onChange={(e) => setDraft({ ...draft, rerankMode: e.target.value as Settings['rerankMode'] })}>
-          <option value="off">Off — fastest, diversity only</option>
+          <option value="auto">Auto — use a local decision model if detected</option>
+          <option value="off">Off — diversity only</option>
           <option value="embeddings">Embeddings — fast, local</option>
-          <option value="decision">System One decision model — thorough, slower</option>
+          <option value="decision">System One decision model — best quality</option>
         </select>
       </label>
+      {draft.rerankMode === 'auto' && (
+        <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
+          {detected?.decisionModels.length
+            ? `Using ${detected.decisionModels[0]} at ${detected.url}.`
+            : detected?.embeddingModels.length
+              ? `Using ${detected.embeddingModels[0]} at ${detected.url}.`
+              : 'No local decision or embedding model detected — results use diversity only. Use Detect local Ollama to refresh.'}
+        </p>
+      )}
 
       {draft.rerankMode === 'decision' && (
         <>

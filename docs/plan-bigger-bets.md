@@ -228,9 +228,10 @@ embeddings with an in-process cache, sort-before-diversity, Settings panel
 fields with detection, and a non-fatal `reranker` health entry. On the
 five-topic golden set the relevance proxy moved 72% → 78% with embeddings,
 72% → 94–98% with `tev1:0.8b` (~7–10s), and 72% → 96% with `tev1:4b` (~26s).
-The 0.8B decision model is the default; the Settings panel exposes an explicit
-re-ranking mode (Off / Embeddings / Decision model) so the latency/quality
-trade-off is a choice. Reproduce with
+The 0.8B decision model is the default; local/desktop installs use an Auto
+mode that picks a detected decision model (embeddings as fallback), and the
+Settings panel exposes explicit Off / Embeddings / Decision modes so the
+latency/quality trade-off remains a choice. Reproduce with
 `DECISION_URL=http://localhost:11434 npm run eval` (or `EMBEDDING_URL=...`).
 TypeSafe Jev (hosted) and ONNX (no Ollama) remain adapters to add when needed.
 

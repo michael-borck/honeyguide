@@ -112,8 +112,10 @@ point `DECISION_URL` at Ollama 0.35+ and pull a decision model
 (`ollama pull tev1:0.8b`); it uses the local Jev-compatible `/v1/systemone`
 endpoint. The 0.8B model is the fast default; `tev1:4b` is slower with
 slightly higher accuracy. If no decision model is configured, `EMBEDDING_URL` with
-`nomic-embed-text` is the fallback. The desktop/web Settings panel can set
-either per request. Re-ranking stays local and is optional/non-fatal
+`nomic-embed-text` is the fallback. On a local/desktop install, the default
+**Auto** mode uses a detected decision model (embeddings if none) without any
+configuration; Off/Embeddings/Decision can be chosen explicitly in Settings.
+Re-ranking stays local and is optional/non-fatal
 ([ADR-0015](docs/adr/0015-semantic-reranking-with-local-embeddings.md),
 [ADR-0016](docs/adr/0016-local-system-one-decision-models.md)).
 

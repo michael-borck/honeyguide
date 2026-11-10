@@ -34,6 +34,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   endpoint, one Noul per candidate. `tev1:0.8b` is the default (94–98%
   relevance proxy, ~7–10s); `tev1:4b` is slower with slightly higher
   accuracy. Preferred over embeddings.
+- Local/desktop installs now default re-ranking to **Auto**: a detected
+  decision model is used automatically, embeddings are the fallback, and
+  explicit Off/Embeddings/Decision modes are still available in Settings.
 - Optional semantic re-ranking (ADR-0015): local Ollama embeddings
   (`nomic-embed-text`) reorder candidates by relevance before diversity
   balancing, with an in-process embedding cache. Used as the fallback when no
