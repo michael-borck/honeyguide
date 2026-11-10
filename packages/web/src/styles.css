@@ -1,0 +1,135 @@
+:root {
+  --ink: #1b1f2a;
+  --muted: #5b6478;
+  --line: #e3e6ee;
+  --bg: #f7f8fc;
+  --card: #ffffff;
+  --accent: #4054b2;
+  --accent-2: #6a3fb2;
+  --ok: #1a7f4e;
+  --warn: #a06a00;
+  --bad: #b3261e;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--ink);
+}
+
+a {
+  color: var(--accent);
+}
+
+:focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+  border-radius: 4px;
+}
+
+.hg-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+.hg-filterbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 10px 16px;
+  margin: 14px 0 4px;
+  padding: 10px 12px;
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 10px;
+}
+
+.hg-filterbar label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hg-filterbar select {
+  font: inherit;
+  font-size: 13px;
+  padding: 5px 8px;
+  border: 1px solid var(--line);
+  border-radius: 7px;
+  background: #fff;
+  color: var(--ink);
+}
+
+.hg-filter-count {
+  margin-left: auto;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.hg-legend {
+  margin: 2px 0 12px;
+  font-size: 12px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+.hg-empty {
+  margin: 18px 0;
+  padding: 16px;
+  background: var(--card);
+  border: 1px dashed var(--line);
+  border-radius: 10px;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+.hg-spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  margin-right: 7px;
+  border: 2px solid var(--line);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  vertical-align: -2px;
+  animation: hg-spin 0.8s linear infinite;
+}
+
+@keyframes hg-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 640px) {
+  .hg-filterbar {
+    gap: 8px 10px;
+    padding: 10px;
+  }
+
+  .hg-filter-count {
+    margin-left: 0;
+    flex-basis: 100%;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .hg-spinner {
+    animation: none;
+    border-top-color: var(--line);
+    border-left-color: var(--accent);
+  }
+}

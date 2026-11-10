@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 
 interface Annotation {
   source: 'llm' | 'extracted' | 'none';
@@ -58,6 +58,47 @@ interface RecheckEntry {
   previous: string;
   current: string;
   changed: boolean;
+}
+
+interface Filters {
+  format: string;
+  sourceType: string;
+  access: string;
+  sort: 'default' | 'newest' | 'oldest' | 'title';
+}
+
+const DEFAULT_FILTERS: Filters = {
+  format: 'all',
+  sourceType: 'all',
+  access: 'all',
+  sort: 'default',
+};
+
+function applyFilters(resources: Resource[], filters: Filters): Resource[] {
+  const out = resources.filter(
+    (r) =>
+      (filters.format === 'all' || r.format === filters.format) &&
+      (filters.sourceType === 'all' || r.sourceType === filters.sourceType) &&
+      (filters.access === 'all' || r.access === filters.access),
+  );
+  switch (filters.sort) {
+    case 'newest':
+      out.sort((a, b) => (b.year ?? 0) - (a.year ?? 0));
+      break;
+    case 'oldest':
+      out.sort((a, b) => (a.year ?? 9999) - (b.year ?? 9999));
+      break;
+    case 'title':
+      out.sort((a, b) => a.title.localeCompare(b.title));
+      break;
+    default:
+      break;
+  }
+  return out;
+}
+
+function hasActiveFilters(filters: Filters): boolean {
+  return filters.format !== 'all' || filters.sourceType !== 'all' || filters.access !== 'all';
 }
 
 /**
@@ -121,6 +162,11 @@ export function App() {
   const [collectionLabel, setCollectionLabel] = useState<string | null>(null);
   const [rechecking, setRechecking] = useState(false);
   const [recheckEntries, setRecheckEntries] = useState<RecheckEntry[] | null>(null);
+  const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const visibleResources = useMemo(
+    () => (result ? applyFilters(result.resources, filters) : []),
+    [result, filters],
+  );
 
   useEffect(() => {
     fetch('/api/health')
@@ -319,6 +365,7 @@ export function App() {
           <textarea
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
+            aria-label="Topics, one per line"
             placeholder={'One topic per line, e.g.\nsupply chain resilience\nforecasting fundamentals\nlean operations'}
             rows={4}
             style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
@@ -328,6 +375,7 @@ export function App() {
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && run()}
+            aria-label="Topic"
             placeholder={doc ? `Using document: ${doc.name}` : 'Topic, e.g. supply chain resilience'}
             disabled={Boolean(doc)}
             style={inputStyle}
@@ -395,8 +443,19 @@ export function App() {
         </p>
       )}
 
-      {error && <p style={{ color: '#b3261e' }}>Error: {error}</p>}
-      {loading && <p style={{ color: '#555' }}>Retrieving, verifying and annotating — this takes a moment…</p>}
+      <div aria-live="polite">
+        {error && (
+          <p role="alert" style={{ color: '#b3261e' }}>
+            Error: {error}
+          </p>
+        )}
+        {loading && (
+          <p role="status" style={{ color: '#555' }}>
+            <span className="hg-spinner" aria-hidden="true" />
+            Retrieving, verifying and annotating — this can take a moment…
+          </p>
+        )}
+      </div>
 
       {result && (
         <>
@@ -412,8 +471,37 @@ export function App() {
             onRecheck={recheckLinks}
             rechecking={rechecking}
           />
-          <ResourceSections resources={result.resources} />
+          <FilterBar
+            filters={filters}
+            onChange={setFilters}
+            shown={visibleResources.length}
+            total={result.resources.length}
+          />
           {recheckEntries && <RecheckReport entries={recheckEntries} />}
+          <ResourceSections resources={visibleResources} />
+          {visibleResources.length === 0 && (
+            <p className="hg-empty">
+              {result.resources.length === 0
+                ? 'No resources found. Try a broader topic, or add retrieval keys for more source types.'
+                : 'No resources match these filters.'}{' '}
+              {hasActiveFilters(filters) && (
+                <button
+                  onClick={() => setFilters(DEFAULT_FILTERS)}
+                  style={{
+                    border: 'none',
+                    background: 'none',
+                    color: '#4054b2',
+                    cursor: 'pointer',
+                    padding: 0,
+                    fontSize: 14,
+                    textDecoration: 'underline',
+                  }}
+                >
+                  Clear filters
+                </button>
+              )}
+            </p>
+          )}
           <Footers
             result={result}
             health={health}
@@ -522,6 +610,77 @@ function RecheckReport({ entries }: { entries: RecheckEntry[] }) {
         </ul>
       )}
     </div>
+  );
+}
+
+function FilterBar({
+  filters,
+  onChange,
+  shown,
+  total,
+}: {
+  filters: Filters;
+  onChange: (filters: Filters) => void;
+  shown: number;
+  total: number;
+}) {
+  const set = (patch: Partial<Filters>) => onChange({ ...filters, ...patch });
+  return (
+    <>
+      <div className="hg-filterbar" role="group" aria-label="Filter and sort results">
+        <label>
+          Format
+          <select value={filters.format} onChange={(e) => set({ format: e.target.value })}>
+            <option value="all">All</option>
+            <option value="paper">Papers</option>
+            <option value="book">Books</option>
+            <option value="podcast">Podcasts</option>
+            <option value="video">Videos</option>
+            <option value="website">Websites</option>
+          </select>
+        </label>
+        <label>
+          Source
+          <select value={filters.sourceType} onChange={(e) => set({ sourceType: e.target.value })}>
+            <option value="all">All</option>
+            <option value="peer-reviewed">Peer-reviewed</option>
+            <option value="practitioner">Practitioner</option>
+            <option value="vendor">Vendor</option>
+            <option value="journalism">Journalism</option>
+            <option value="government">Government</option>
+          </select>
+        </label>
+        <label>
+          Access
+          <select value={filters.access} onChange={(e) => set({ access: e.target.value })}>
+            <option value="all">All</option>
+            <option value="open">Open access</option>
+            <option value="subscription">Subscription</option>
+            <option value="unknown">Unknown</option>
+          </select>
+        </label>
+        <label>
+          Sort
+          <select
+            value={filters.sort}
+            onChange={(e) => set({ sort: e.target.value as Filters['sort'] })}
+          >
+            <option value="default">Best mix</option>
+            <option value="newest">Newest first</option>
+            <option value="oldest">Oldest first</option>
+            <option value="title">Title A–Z</option>
+          </select>
+        </label>
+        <span className="hg-filter-count">
+          {shown} of {total}
+        </span>
+      </div>
+      <p className="hg-legend">
+        <strong>record found</strong> = present in a database · <strong>link live</strong> = HTTP
+        check passed · <strong>open access</strong> = free to read ·{' '}
+        <strong>subscription</strong> = likely paywalled.
+      </p>
+    </>
   );
 }
 
