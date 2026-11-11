@@ -25,6 +25,7 @@ old one.
 | [0014](0014-portable-collections-shared-teams-deferred.md) | Portable collections now, shared team collections deferred | Accepted |
 | [0015](0015-semantic-reranking-with-local-embeddings.md) | Semantic re-ranking with local embeddings; Jev/ONNX as adapters | Accepted |
 | [0016](0016-local-system-one-decision-models.md) | Local System One decision models for re-ranking | Accepted |
+| [0017](0017-learning-outcome-alignment.md) | Learning-outcome alignment: local judgments, human confirmation | Accepted |
 
 ## Adding an ADR
 

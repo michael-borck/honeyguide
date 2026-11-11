@@ -1,4 +1,4 @@
-import type { Resource, SuggestResult } from './types.js';
+import type { Outcome, Resource, SuggestResult } from './types.js';
 
 /**
  * Portable collection format (ADR-0014). A collection is a saved result list
@@ -15,12 +15,15 @@ export interface CollectionFile {
   topic: string;
   /** ISO timestamp of when the list was generated. */
   createdAt: string;
+  /** Unit outcomes the list was aligned to, when supplied (ADR-0017). */
+  outcomes?: Outcome[];
   result: SuggestResult;
 }
 
 export function toCollectionFile(
   topic: string,
   result: SuggestResult,
+  outcomes: Outcome[] = [],
   now: Date = new Date(),
 ): CollectionFile {
   return {
@@ -28,6 +31,7 @@ export function toCollectionFile(
     schemaVersion: COLLECTION_SCHEMA_VERSION,
     topic: topic.trim(),
     createdAt: now.toISOString(),
+    ...(outcomes.length ? { outcomes } : {}),
     result: portable(result),
   };
 }
@@ -78,11 +82,22 @@ export function parseCollectionFile(input: string | unknown): CollectionFile {
   if (!obj.result || !Array.isArray(obj.result.resources)) {
     throw new Error('Collection file is missing its resources.');
   }
+  const outcomes = Array.isArray(obj.outcomes)
+    ? obj.outcomes
+        .filter(
+          (outcome): outcome is Outcome =>
+            Boolean(outcome) &&
+            typeof (outcome as Outcome).id === 'string' &&
+            typeof (outcome as Outcome).text === 'string',
+        )
+        .map((outcome) => ({ id: outcome.id, text: outcome.text }))
+    : [];
   return {
     kind: COLLECTION_KIND,
     schemaVersion: obj.schemaVersion,
     topic: typeof obj.topic === 'string' ? obj.topic : '',
     createdAt: typeof obj.createdAt === 'string' ? obj.createdAt : nowIso(),
+    ...(outcomes.length ? { outcomes } : {}),
     result: obj.result as SuggestResult,
   };
 }

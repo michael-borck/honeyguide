@@ -11,6 +11,7 @@ import {
   extract,
   recheckResources,
   createSearchProvider,
+  type Outcome,
   type PipelineConfig,
   type SuggestResult,
 } from '@michaelborck/honeyguide-core';
@@ -23,7 +24,12 @@ import {
 export interface AppOptions {
   pipelineDefaults: PipelineConfig;
   run: (
-    job: { input: string; maxResults: number; counterpoint?: boolean },
+    job: {
+      input: string;
+      maxResults: number;
+      counterpoint?: boolean;
+      outcomes?: Outcome[];
+    },
     config: PipelineConfig,
     byok: boolean,
   ) => Promise<SuggestResult>;
@@ -52,6 +58,8 @@ interface SuggestBody {
   embeddings?: { url?: string; model?: string };
   /** Optional per-request local System One decision model (ADR-0016). */
   decision?: { url?: string; model?: string };
+  /** Optional unit outcomes; when present the pipeline proposes alignments. */
+  outcomes?: Outcome[];
   counterpoint?: boolean;
 }
 
@@ -144,6 +152,7 @@ export function createApp(options: AppOptions): express.Express {
           input,
           maxResults: clamp(body.maxResults ?? 10, 1, 25),
           counterpoint: Boolean(body.counterpoint),
+          outcomes: body.outcomes,
         },
         pipelineConfig,
         byok,
@@ -193,6 +202,7 @@ export function createApp(options: AppOptions): express.Express {
       const entries = await suggestBatch(topics, pipelineConfig, {
         maxResults: clamp(body.maxResults ?? 10, 1, 25),
         counterpoint: Boolean(body.counterpoint),
+        outcomes: body.outcomes,
       });
       if (body.format === 'markdown') {
         res.type('text/markdown').send(toBatchMarkdown(entries));
@@ -284,6 +294,35 @@ export function createApp(options: AppOptions): express.Express {
       res
         .status(500)
         .json({ error: error instanceof Error ? error.message : 'recheck failed' });
+    }
+  });
+
+  // Export the result the client is actually showing (including confirmed
+  // outcome alignments) without re-running the pipeline (ADR-0017).
+  app.post('/api/export', (req, res) => {
+    const body = req.body as {
+      topic?: string;
+      result?: SuggestResult;
+      format?: string;
+    };
+    if (!body.result || !Array.isArray(body.result.resources)) {
+      res.status(400).json({ error: 'result.resources[] is required' });
+      return;
+    }
+    const topic = typeof body.topic === 'string' ? body.topic.slice(0, 200) : 'Untitled';
+    switch (body.format) {
+      case 'markdown':
+        res.type('text/markdown').send(toMarkdown(topic, body.result));
+        break;
+      case 'html':
+        res.type('text/html').send(toLmsHtml(topic, body.result));
+        break;
+      case 'apa':
+      case 'harvard':
+        res.type('text/plain').send(toCitations(body.result, body.format));
+        break;
+      default:
+        res.status(400).json({ error: 'format must be markdown, html, apa or harvard' });
     }
   });
 

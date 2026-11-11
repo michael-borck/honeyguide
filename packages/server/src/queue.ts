@@ -1,6 +1,7 @@
 import { Queue, QueueEvents, Worker } from 'bullmq';
 import {
   suggestResources,
+  type Outcome,
   type PipelineConfig,
   type SuggestResult,
 } from '@michaelborck/honeyguide-core';
@@ -22,6 +23,7 @@ interface SuggestJob {
   input: string;
   maxResults: number;
   counterpoint?: boolean;
+  outcomes?: Outcome[];
 }
 
 const QUEUE_NAME = 'honeyguide-suggest';
@@ -42,7 +44,12 @@ export async function createRunner(
 ): Promise<SuggestRunner> {
   const inline = (job: SuggestJob, config: PipelineConfig) =>
     suggestResources(
-      { input: job.input, maxResults: job.maxResults, counterpoint: job.counterpoint },
+      {
+        input: job.input,
+        maxResults: job.maxResults,
+        counterpoint: job.counterpoint,
+        outcomes: job.outcomes,
+      },
       config,
     );
 

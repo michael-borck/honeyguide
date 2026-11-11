@@ -16,6 +16,7 @@ import {
   extract,
   toCollectionFile,
   resourcesFromSaved,
+  parseOutcomes,
 } from '@michaelborck/honeyguide-core';
 
 function cliVersion(): string {
@@ -30,6 +31,13 @@ function cliVersion(): string {
 }
 
 const program = new Command();
+
+async function readOutcomes(file?: string) {
+  if (!file) return [];
+  const outcomes = parseOutcomes(await readFile(file, 'utf8'));
+  if (!outcomes.length) program.error('No outcomes found in file.');
+  return outcomes;
+}
 
 program
   .name('honeyguide')
@@ -49,6 +57,7 @@ program
   )
   .option('--json', 'shorthand for --format json')
   .option('--collection', 'write a portable collection file (JSON) that can be reopened and shared')
+  .option('--outcomes <path>', 'align resources to unit outcomes (one per line)')
   .option('-c, --counterpoint', 'also surface material disagreeing with the framing')
   .action(
     async (
@@ -59,6 +68,7 @@ program
         format: string;
         json?: boolean;
         collection?: boolean;
+        outcomes?: string;
         counterpoint?: boolean;
       },
     ) => {
@@ -72,11 +82,13 @@ program
       if (!input.trim()) {
         program.error('Provide a topic or --file <path>.');
       }
+      const outcomes = await readOutcomes(options.outcomes);
       const result = await suggestResources(
         {
           input,
           maxResults: Number(options.maxResults),
           counterpoint: Boolean(options.counterpoint),
+          ...(outcomes.length ? { outcomes } : {}),
         },
         configFromEnv(),
       );
@@ -88,7 +100,7 @@ program
       let out: string;
       switch (format) {
         case 'collection':
-          out = JSON.stringify(toCollectionFile(label, result), null, 2);
+          out = JSON.stringify(toCollectionFile(label, result, outcomes), null, 2);
           break;
         case 'json':
           out = JSON.stringify(result, null, 2);
@@ -112,21 +124,29 @@ program
   .description('Batch mode: verified resources for many topics at once (one per line)')
   .argument('<file>', 'text file with one topic per line')
   .option('-n, --max-results <n>', 'maximum resources per topic', '8')
+  .option('--outcomes <path>', 'align each topic to unit outcomes (one per line)')
   .option('-c, --counterpoint', 'also surface disagreeing material per topic')
   .option('--json', 'output JSON instead of markdown')
   .action(
     async (
       file: string,
-      options: { maxResults: string; counterpoint?: boolean; json?: boolean },
+      options: {
+        maxResults: string;
+        counterpoint?: boolean;
+        outcomes?: string;
+        json?: boolean;
+      },
     ) => {
       const topics = (await readFile(file, 'utf8'))
         .split('\n')
         .map((l) => l.trim())
         .filter((l) => l && !l.startsWith('#'));
       if (!topics.length) program.error('No topics found in file.');
+      const outcomes = await readOutcomes(options.outcomes);
       const entries = await suggestBatch(topics, configFromEnv(), {
         maxResults: Number(options.maxResults),
         counterpoint: Boolean(options.counterpoint),
+        ...(outcomes.length ? { outcomes } : {}),
       });
       process.stdout.write(
         (options.json ? JSON.stringify({ entries }, null, 2) : toBatchMarkdown(entries)) +

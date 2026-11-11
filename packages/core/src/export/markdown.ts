@@ -48,6 +48,7 @@ function resourceBlock(r: Resource): string[] {
   meta.push(`source: ${r.sourceType}`);
   meta.push(`verification: ${verificationText(r.verification, r.verificationBasis)}`);
   if (r.access !== 'unknown') meta.push(`access: ${r.access}`);
+  if (r.alignment?.confirmed) meta.push(`outcome: ${r.alignment.outcomeText}`);
   if (r.licensing !== 'unknown') meta.push(`licensing: ${r.licensing}`);
   if (r.accessibilityNotes.length) meta.push(r.accessibilityNotes.join(', '));
   if (r.commerciallyInterested) meta.push('⚠ commercially interested');

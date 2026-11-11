@@ -55,6 +55,17 @@ export {
   type Reranker,
 } from './rank/reranker.js';
 export {
+  parseOutcomes,
+  createOutcomeAligner,
+  buildAlignmentRequest,
+  parseAlignmentResponse,
+  OllamaOutcomeAligner,
+  EmbeddingOutcomeAligner,
+  MAX_ALIGN_RESOURCES,
+  MAX_ALIGN_OUTCOMES,
+  type OutcomeAligner,
+} from './align/outcomes.js';
+export {
   buildSystemOneRequest,
   parseSystemOneScores,
   balancedSubset,

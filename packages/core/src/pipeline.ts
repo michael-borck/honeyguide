@@ -19,6 +19,7 @@ import { verifyCandidate, type VerificationOutcome } from './verify/verify.js';
 import { classifySource } from './enrich/sourceType.js';
 import { fetchPageMeta } from './enrich/page.js';
 import { lookupUnpaywall } from './enrich/unpaywall.js';
+import { createOutcomeAligner } from './align/outcomes.js';
 import { annotate } from './annotate/ladder.js';
 import { diversify } from './rank/diversity.js';
 import { createReranker } from './rank/reranker.js';
@@ -107,6 +108,26 @@ export async function suggestResources(
       health.counterpoint = counterSelected.length > 0 ? 'ok' : 'degraded';
     } catch {
       health.counterpoint = 'unavailable';
+    }
+  }
+
+  // --- Optional outcome alignment (ADR-0017) ---------------------------
+  if (request.outcomes?.length && resources.length) {
+    const aligner = createOutcomeAligner(config);
+    if (!aligner) {
+      health.alignment = 'unavailable';
+    } else {
+      try {
+        const alignments = await aligner.align(topic, resources, request.outcomes);
+        for (const resource of resources) {
+          resource.alignment = alignments.get(resource) ?? null;
+        }
+        health.alignment = resources.some((resource) => resource.alignment)
+          ? 'ok'
+          : 'degraded';
+      } catch {
+        health.alignment = 'unavailable';
+      }
     }
   }
 
@@ -255,6 +276,7 @@ function toResource(
     annotation: { source: 'none', text: null },
     thumbnailUrl: candidate.thumbnailUrl ?? null,
     accessibilityNotes: candidate.accessibilityNotes ?? [],
+    alignment: null,
   };
 }
 

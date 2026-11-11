@@ -37,6 +37,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Local/desktop installs now default re-ranking to **Auto**: a detected
   decision model is used automatically, embeddings are the fallback, and
   explicit Off/Embeddings/Decision modes are still available in Settings.
+- Learning-outcome alignment (ADR-0017): paste unit outcomes (one per line)
+  and a local System One decision model proposes an outcome per resource,
+  with embeddings as fallback. Each proposal shows its confidence; you confirm
+  the ones you want, and only confirmed tags appear in Markdown/LMS exports.
+  Outcomes and confirmations travel in the collection file. CLI:
+  `suggest --outcomes outcomes.txt --collection` and
+  `batch --outcomes outcomes.txt`.
 - Optional semantic re-ranking (ADR-0015): local Ollama embeddings
   (`nomic-embed-text`) reorder candidates by relevance before diversity
   balancing, with an in-process embedding cache. Used as the fallback when no

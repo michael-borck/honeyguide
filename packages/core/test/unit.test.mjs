@@ -42,6 +42,9 @@ import {
   parseSystemOneScores,
   balancedSubset,
   createReranker,
+  parseOutcomes,
+  buildAlignmentRequest,
+  parseAlignmentResponse,
 } from '../dist/index.js';
 
 const resource = (over = {}) => ({
@@ -61,6 +64,7 @@ const resource = (over = {}) => ({
   annotation: { source: 'none', text: null },
   thumbnailUrl: null,
   accessibilityNotes: [],
+  alignment: null,
   ...over,
 });
 
@@ -496,10 +500,140 @@ test('JSON cache respects its TTL and can be cleared', () => {
   assert.equal(getCachedJson('k', 1500, 1000), undefined);
 });
 
+test('parseOutcomes strips list markers and numbers outcomes', () => {
+  const outcomes = parseOutcomes(
+    '- Explain spaced repetition\n2. Evaluate supply chain risk\n\n* Describe retrieval practice',
+  );
+  assert.deepEqual(
+    outcomes.map((o) => o.id),
+    ['o0', 'o1', 'o2'],
+  );
+  assert.equal(outcomes[1].text, 'Evaluate supply chain risk');
+});
+
+test('buildAlignmentRequest asks a Choice per resource over outcomes plus none', () => {
+  const outcomes = parseOutcomes('Explain spaced repetition\nDescribe retrieval practice');
+  const resources = [
+    resource({
+      title: 'Spaced repetition review',
+      annotation: { source: 'extracted', text: 'A review of spacing.' },
+    }),
+  ];
+  const { request, resourceById, outcomeById } = buildAlignmentRequest(
+    'study techniques',
+    resources,
+    outcomes,
+    'tev1:0.8b',
+  );
+  assert.equal(request.questions.r0.type, 'choice');
+  assert.match(request.questions.r0.instructions, /resources\[0\]/);
+  assert.deepEqual(Object.keys(request.questions.r0.criteria), ['o0', 'o1', 'none']);
+  assert.equal(resourceById.get('r0'), resources[0]);
+  assert.equal(outcomeById.get('o1').text, 'Describe retrieval practice');
+});
+
+test('parseAlignmentResponse maps choices and rescues a close outcome over none', () => {
+  const outcomes = parseOutcomes('Explain spaced repetition\nDescribe retrieval practice');
+  const first = resource({ title: 'Spaced repetition review' });
+  const second = resource({ title: 'Testing effect study' });
+  const resourceById = new Map([
+    ['r0', first],
+    ['r1', second],
+  ]);
+  const outcomeById = new Map(outcomes.map((o) => [o.id, o]));
+  const alignments = parseAlignmentResponse(
+    {
+      answers: {
+        r0: {
+          type: 'choice',
+          choice: 'o0',
+          confidence: 0.9,
+          probabilities: { o0: 0.94, o1: 0.01, none: 0.05 },
+        },
+        r1: {
+          type: 'choice',
+          choice: 'none',
+          confidence: 0.2,
+          probabilities: { o0: 0.06, o1: 0.46, none: 0.48 },
+        },
+      },
+    },
+    resourceById,
+    outcomeById,
+  );
+  assert.equal(alignments.get(first).outcomeId, 'o0');
+  assert.equal(alignments.get(first).confidence, 'high');
+  assert.equal(alignments.get(second).outcomeId, 'o1');
+  assert.equal(alignments.get(second).confidence, 'low');
+});
+
+test('parseAlignmentResponse drops resources that fit no outcome', () => {
+  const outcomes = parseOutcomes('Explain spaced repetition');
+  const offTopic = resource({ title: 'Supply chain resilience' });
+  const resourceById = new Map([['r0', offTopic]]);
+  const outcomeById = new Map(outcomes.map((o) => [o.id, o]));
+  const alignments = parseAlignmentResponse(
+    {
+      answers: {
+        r0: {
+          type: 'choice',
+          choice: 'none',
+          probabilities: { o0: 0.001, none: 0.999 },
+        },
+      },
+    },
+    resourceById,
+    outcomeById,
+  );
+  assert.equal(alignments.size, 0);
+});
+
+test('exports include only confirmed outcome alignments', () => {
+  const confirmed = resource({
+    title: 'A',
+    alignment: {
+      outcomeId: 'o0',
+      outcomeText: 'Explain spacing',
+      score: 0.9,
+      confidence: 'high',
+      proposedBy: 'decision',
+      confirmed: true,
+    },
+  });
+  const proposed = resource({
+    title: 'B',
+    alignment: {
+      outcomeId: 'o1',
+      outcomeText: 'Describe retrieval',
+      score: 0.5,
+      confidence: 'medium',
+      proposedBy: 'decision',
+      confirmed: false,
+    },
+  });
+  const md = toMarkdown('topic', { resources: [confirmed, proposed], componentHealth: {} });
+  assert.match(md, /outcome: Explain spacing/);
+  assert.doesNotMatch(md, /outcome: Describe retrieval/);
+  const html = toLmsHtml('topic', { resources: [confirmed, proposed], componentHealth: {} });
+  assert.match(html, /outcome: Explain spacing/);
+  assert.doesNotMatch(html, /outcome: Describe retrieval/);
+});
+
+test('collection files carry outcomes', () => {
+  const outcomes = parseOutcomes('Explain spaced repetition\nDescribe retrieval practice');
+  const file = toCollectionFile('t', { resources: [resource()], componentHealth: {} }, outcomes);
+  const parsed = parseCollectionFile(JSON.stringify(file));
+  assert.deepEqual(
+    parsed.outcomes?.map((o) => o.text),
+    ['Explain spaced repetition', 'Describe retrieval practice'],
+  );
+});
+
 test('collection files round-trip and carry their topic', () => {
   const file = toCollectionFile(
     'spaced repetition',
     { resources: [resource()], componentHealth: {} },
+    [],
     new Date('2026-11-11T00:00:00Z'),
   );
   assert.equal(file.kind, COLLECTION_KIND);

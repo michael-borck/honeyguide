@@ -5,6 +5,20 @@ interface Annotation {
   text: string | null;
 }
 
+interface Outcome {
+  id: string;
+  text: string;
+}
+
+interface Alignment {
+  outcomeId: string;
+  outcomeText: string;
+  score: number;
+  confidence: 'high' | 'medium' | 'low';
+  proposedBy: 'decision' | 'embeddings';
+  confirmed: boolean;
+}
+
 interface Resource {
   stance: 'supporting' | 'counterpoint';
   title: string;
@@ -22,6 +36,7 @@ interface Resource {
   accessibilityNotes: string[];
   annotation: Annotation;
   thumbnailUrl: string | null;
+  alignment: Alignment | null;
 }
 
 interface SuggestResult {
@@ -50,7 +65,19 @@ interface CollectionFile {
   schemaVersion: number;
   topic: string;
   createdAt: string;
+  outcomes?: Outcome[];
   result: SuggestResult;
+}
+
+const OUTCOMES_KEY = 'honeyguide-outcomes';
+
+/** One outcome per line; list markers and numbering are stripped. */
+function parseOutcomes(text: string): Outcome[] {
+  return text
+    .split(/\r?\n/)
+    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim())
+    .filter(Boolean)
+    .map((outcomeText, index) => ({ id: `o${index}`, text: outcomeText }));
 }
 
 interface RecheckEntry {
@@ -191,6 +218,10 @@ export function App() {
   const [rechecking, setRechecking] = useState(false);
   const [recheckEntries, setRecheckEntries] = useState<RecheckEntry[] | null>(null);
   const [filters, setFilters] = useState<Filters>(DEFAULT_FILTERS);
+  const [outcomesText, setOutcomesText] = useState(
+    () => localStorage.getItem(OUTCOMES_KEY) ?? '',
+  );
+  const outcomes = useMemo(() => parseOutcomes(outcomesText), [outcomesText]);
   const visibleResources = useMemo(
     () => (result ? applyFilters(result.resources, filters) : []),
     [result, filters],
@@ -224,6 +255,14 @@ export function App() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(OUTCOMES_KEY, outcomesText);
+    } catch {
+      // storage unavailable; outcomes still work for this session
+    }
+  }, [outcomesText]);
 
   function saveSettings(next: Settings) {
     setSettings(next);
@@ -288,6 +327,7 @@ export function App() {
         : {}),
       ...(settings.youtubeApiKey ? { youtubeApiKey: settings.youtubeApiKey } : {}),
       ...rerankFields(),
+      ...(outcomes.length ? { outcomes } : {}),
       ...(counterpoint ? { counterpoint: true } : {}),
     };
   }
@@ -353,16 +393,53 @@ export function App() {
     }
   }
 
-  async function download(format: string, extension: string) {
-    const endpoint = batchResult ? '/api/batch' : '/api/suggest';
-    const payload = batchResult
-      ? { topics: topicsFromInput(), format, ...credentialFields() }
-      : { input: doc ? doc.text : topic.trim(), format, ...credentialFields() };
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json' },
-      body: JSON.stringify(payload),
+  function toggleAlignment(url: string) {
+    const toggle = (res: SuggestResult): SuggestResult => ({
+      ...res,
+      resources: res.resources.map((resource) =>
+        resource.url === url && resource.alignment
+          ? {
+              ...resource,
+              alignment: {
+                ...resource.alignment,
+                confirmed: !resource.alignment.confirmed,
+              },
+            }
+          : resource,
+      ),
     });
+    setResult((current) => (current ? toggle(current) : current));
+    setBatchResult((current) =>
+      current ? current.map((entry) => ({ ...entry, result: toggle(entry.result) })) : current,
+    );
+  }
+
+  async function download(format: string, extension: string) {
+    let res: Response;
+    if (batchResult) {
+      res = await fetch('/api/batch', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ topics: topicsFromInput(), format, ...credentialFields() }),
+      });
+    } else {
+      if (!result) return;
+      // Export exactly what the user sees, including confirmed alignments.
+      res = await fetch('/api/export', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({
+          topic: doc ? doc.name : topic.trim(),
+          result,
+          format,
+        }),
+      });
+    }
+    if (!res.ok) {
+      const data = (await res.json().catch(() => ({}))) as { error?: string };
+      setError(data.error ?? `Export failed (${res.status})`);
+      return;
+    }
     const blob = await res.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
@@ -378,6 +455,7 @@ export function App() {
       schemaVersion: COLLECTION_SCHEMA_VERSION,
       topic: doc ? doc.name : topic.trim(),
       createdAt: new Date().toISOString(),
+      ...(outcomes.length ? { outcomes } : {}),
       result,
     };
     const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
@@ -405,6 +483,9 @@ export function App() {
       setDoc(null);
       setCollectionLabel(data.topic || file.name);
       setRecheckEntries(null);
+      setOutcomesText(
+        Array.isArray(data.outcomes) ? data.outcomes.map((o) => o.text).join('\n') : '',
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not open collection');
     }
@@ -531,6 +612,33 @@ export function App() {
         )}
       </div>
 
+      <details style={{ marginBottom: '1.25rem', fontSize: 13 }}>
+        <summary style={{ cursor: 'pointer', color: '#4054b2' }}>
+          🎯 Unit outcomes {outcomes.length ? `(${outcomes.length})` : '(optional)'}
+        </summary>
+        <textarea
+          value={outcomesText}
+          onChange={(e) => setOutcomesText(e.target.value)}
+          rows={4}
+          aria-label="Unit outcomes, one per line"
+          placeholder={'One outcome per line, e.g.\nExplain how spaced repetition improves retention\nEvaluate supply-chain resilience strategies'}
+          style={{
+            width: '100%',
+            marginTop: 8,
+            padding: '10px 14px',
+            fontSize: 14,
+            borderRadius: 8,
+            border: '1px solid #bbb',
+            resize: 'vertical',
+            fontFamily: 'inherit',
+          }}
+        />
+        <p style={{ color: '#777', margin: '6px 0 0' }}>
+          Resources are matched to outcomes locally. Confirm the ones you want; only confirmed
+          tags appear in exports. Re-run after changing outcomes.
+        </p>
+      </details>
+
       {!llmAvailable && (
         <p style={{ fontSize: 13, color: '#555' }}>
           💡 No AI provider configured — results will carry extracted descriptions instead of
@@ -576,7 +684,10 @@ export function App() {
             total={result.resources.length}
           />
           {recheckEntries && <RecheckReport entries={recheckEntries} />}
-          <ResourceSections resources={visibleResources} />
+          <ResourceSections
+            resources={visibleResources}
+            onToggleAlignment={toggleAlignment}
+          />
           {visibleResources.length === 0 && (
             <p className="hg-empty">
               {result.resources.length === 0
@@ -620,7 +731,10 @@ export function App() {
               <h2 style={{ fontSize: 17, borderBottom: '2px solid #e3e3e3', paddingBottom: 4 }}>
                 {entry.topic}
               </h2>
-              <ResourceSections resources={entry.result.resources} />
+              <ResourceSections
+                resources={entry.result.resources}
+                onToggleAlignment={toggleAlignment}
+              />
             </section>
           ))}
         </>
@@ -782,13 +896,19 @@ function FilterBar({
   );
 }
 
-function ResourceSections({ resources }: { resources: Resource[] }) {
+function ResourceSections({
+  resources,
+  onToggleAlignment,
+}: {
+  resources: Resource[];
+  onToggleAlignment: (url: string) => void;
+}) {
   const supporting = resources.filter((r) => r.stance !== 'counterpoint');
   const counterpoints = resources.filter((r) => r.stance === 'counterpoint');
   return (
     <>
       {supporting.map((r) => (
-        <ResourceCard key={r.url} r={r} />
+        <ResourceCard key={r.url} r={r} onToggleAlignment={onToggleAlignment} />
       ))}
       {counterpoints.length > 0 && (
         <>
@@ -796,7 +916,7 @@ function ResourceSections({ resources }: { resources: Resource[] }) {
             ⚖ Counterpoints — material that disagrees with or complicates the framing
           </h3>
           {counterpoints.map((r) => (
-            <ResourceCard key={r.url} r={r} />
+            <ResourceCard key={r.url} r={r} onToggleAlignment={onToggleAlignment} />
           ))}
         </>
       )}
@@ -804,7 +924,13 @@ function ResourceSections({ resources }: { resources: Resource[] }) {
   );
 }
 
-function ResourceCard({ r }: { r: Resource }) {
+function ResourceCard({
+  r,
+  onToggleAlignment,
+}: {
+  r: Resource;
+  onToggleAlignment: (url: string) => void;
+}) {
   return (
     <article style={{ display: 'flex', gap: 14, padding: '14px 0', borderTop: '1px solid #e3e3e3' }}>
       {r.thumbnailUrl && (
@@ -837,6 +963,50 @@ function ResourceCard({ r }: { r: Resource }) {
             </em>
             {r.annotation.text}
           </p>
+        )}
+        {r.alignment && (
+          <div
+            style={{
+              display: 'flex',
+              alignItems: 'baseline',
+              gap: 8,
+              flexWrap: 'wrap',
+              marginTop: 6,
+              fontSize: 13,
+            }}
+          >
+            <Badge
+              text={`outcome · ${r.alignment.confidence}`}
+              color={
+                r.alignment.confidence === 'high'
+                  ? '#1a7f4e'
+                  : r.alignment.confidence === 'medium'
+                    ? '#a06a00'
+                    : '#666'
+              }
+            />
+            <span>{r.alignment.outcomeText}</span>
+            <span
+              style={{ color: '#999', fontSize: 11 }}
+              title={`Proposed by ${r.alignment.proposedBy}; score ${r.alignment.score.toFixed(2)}`}
+            >
+              {Math.round(r.alignment.score * 100)}%
+            </span>
+            <button
+              onClick={() => onToggleAlignment(r.url)}
+              style={{
+                border: '1px solid #bbb',
+                background: r.alignment.confirmed ? '#1a7f4e' : '#fff',
+                color: r.alignment.confirmed ? '#fff' : '#4054b2',
+                borderRadius: 6,
+                padding: '2px 8px',
+                cursor: 'pointer',
+                fontSize: 12,
+              }}
+            >
+              {r.alignment.confirmed ? '✓ confirmed' : 'Confirm'}
+            </button>
+          </div>
         )}
       </div>
     </article>
@@ -871,6 +1041,21 @@ function Footers({
             desktop app
           </a>
           .
+        </p>
+      )}
+      {result.componentHealth.alignment === 'unavailable' && (
+        <p
+          style={{
+            fontSize: 13,
+            color: '#555',
+            marginTop: 12,
+            padding: '10px 14px',
+            background: '#fff8e6',
+            borderRadius: 8,
+          }}
+        >
+          🎯 Outcome alignment is unavailable. Configure a local decision or embedding model in
+          Settings to match resources to outcomes.
         </p>
       )}
       <p style={{ fontSize: 12, color: '#888', marginTop: 12 }}>

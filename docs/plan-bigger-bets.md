@@ -71,42 +71,45 @@ list and spend less time re-reading it.
 
 **Design.**
 
-- User uploads or pastes a unit outline / outcome list once per unit.
-- Outcomes are extracted into a small structured list (`UnitOutcome`).
-- During suggestion, the model proposes an alignment for each resource:
-  `{ outcomeId, confidence: high|medium|low, reason }`. It sees only the
-  outcome text and the retrieved resource metadata.
-- The UI shows the proposed outcome as a badge with the reason, and the user
-  can accept or reject it. Rejections are stored per unit.
-- Export includes outcome tags only where a human accepted them, so the LMS
-  file never carries a machine guess as fact.
+- User pastes or uploads an outcome list once per unit (one per line).
+- Outcomes become a small structured list (`Outcome { id, text }`).
+- During suggestion, a local System One decision model proposes an alignment
+  per resource (`Choice` over outcomes + `none`); embeddings are the fallback.
+  It sees only the outcome text and the retrieved resource metadata.
+- The UI shows the proposed outcome with confidence and score, and the user
+  confirms or rejects it. Only confirmed tags are exported.
+- Outcomes and confirmations travel in the portable collection file, so no
+  server-side unit store is required (ADR-0014).
 
-**Data model (needs a persistence ADR).**
-
-```
-Unit        id, owner, title, createdAt
-UnitOutcome id, unitId, text, order
-Resource    (existing, ephemeral)
-Alignment   unitId, resourceUrlHash, outcomeId, confidence, reason,
-            acceptedByHuman, createdAt
-```
+**Data model.** `Outcome { id, text }`, `Alignment { outcomeId, outcomeText,
+score, confidence, proposedBy, confirmed }`, attached to the existing
+`Resource`. Stored in browser localStorage and the collection file; a future
+server can store the same documents.
 
 **Boundaries.** The alignment step is an annotation rung: if the model is
 unavailable, resources still return without outcome tags. The model is never
 asked to invent outcomes or resources.
 
+**Status.** Implemented MVP (ADR-0017): outcome textarea, decision-model
+`Choice` alignment with embedding fallback, confidence-aware near-ties,
+confirm toggle in the UI, confirmed-only Markdown/LMS export via
+`POST /api/export`, and collection-file persistence. Tested locally with
+`tev1:0.8b`: relevant matches landed with high confidence, off-topic
+resources were left unaligned.
+
 **Milestones.**
 
-1. Outcome extraction from pasted text (heuristic + LLM), with a preview.
-2. Alignment proposal in the pipeline and UI, clearly labelled as proposed.
-3. Accept/reject persistence and export of accepted tags.
-4. Golden-set evaluation of alignment quality.
+1. Outcome capture from pasted text. Done (manual list; outline extraction is
+   still heuristic).
+2. Alignment proposal in the pipeline and UI, labelled as proposed. Done.
+3. Confirm/reject persistence and export of confirmed tags. Done.
+4. Golden-set evaluation of alignment quality. Pending.
 
-**Risks.** Over-tagging (everything maps to everything) — mitigate with a
-confidence floor and a cap per outcome. Privacy of unit outlines — store only
-what the user explicitly saves, and make deletion easy.
+**Risks.** Over-tagging (everything maps to everything) — mitigated by the
+`none` option, confidence labels, and mandatory human confirmation. Privacy of
+outcomes — stored locally or in a file the user controls, never server-side.
 
-**Effort:** L.
+**Effort:** L (mostly complete).
 
 ---
 

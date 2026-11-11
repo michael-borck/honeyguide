@@ -65,6 +65,29 @@ export interface Annotation {
  */
 export type Stance = 'supporting' | 'counterpoint';
 
+/** A unit learning outcome, used for optional alignment (ADR-0017). */
+export interface Outcome {
+  id: string;
+  text: string;
+}
+
+export type AlignmentConfidence = 'high' | 'medium' | 'low';
+
+/**
+ * A proposed link between a resource and an outcome. The model proposes; the
+ * human confirms. Only confirmed alignments are exported.
+ */
+export interface Alignment {
+  outcomeId: string;
+  /** Copied so collections and exports are self-contained. */
+  outcomeText: string;
+  /** Choice probability or embedding similarity, 0..1. */
+  score: number;
+  confidence: AlignmentConfidence;
+  proposedBy: 'decision' | 'embeddings';
+  confirmed: boolean;
+}
+
 export interface Resource {
   stance: Stance;
   title: string;
@@ -88,6 +111,8 @@ export interface Resource {
   /** oEmbed or og:image URL; null when unavailable (ADR-0005). */
   thumbnailUrl: string | null;
   accessibilityNotes: string[];
+  /** Proposed outcome alignment, if the request supplied outcomes (ADR-0017). */
+  alignment: Alignment | null;
 }
 
 export interface SuggestRequest {
@@ -99,6 +124,8 @@ export interface SuggestRequest {
    * or complicates the input's framing, clearly labelled (spec §3).
    */
   counterpoint?: boolean;
+  /** Optional unit outcomes; when present the pipeline proposes alignments. */
+  outcomes?: Outcome[];
 }
 
 export type ComponentState = 'ok' | 'degraded' | 'unavailable';

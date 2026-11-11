@@ -25,6 +25,7 @@ function resourceHtml(r: Resource): string {
   ];
   if (r.year) meta.push(String(r.year));
   if (r.access !== 'unknown') meta.push(`access: ${r.access}`);
+  if (r.alignment?.confirmed) meta.push(`outcome: ${r.alignment.outcomeText}`);
   if (r.licensing !== 'unknown') meta.push(r.licensing.replace(/-/g, ' '));
   if (r.accessibilityNotes.length) meta.push(r.accessibilityNotes.join(', '));
   if (r.commerciallyInterested) meta.push('⚠ commercially interested');
