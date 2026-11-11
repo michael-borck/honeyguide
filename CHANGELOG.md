@@ -76,6 +76,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `/api/health` reports the configured retrieval sources and the web-search
   provider.
 
+### Changed
+
+- UI polish: a shared design system (cards, buttons, badges, forms), a
+  card-based results layout with clearer hierarchy, a responsive shell,
+  consistent panels, and improved focus, empty and loading states.
+
 ### Fixed
 
 - CLI `--version` reported a hardcoded `0.1.1`; it now reads the package

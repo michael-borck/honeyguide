@@ -695,29 +695,20 @@ export function App() {
   }
 
   const llmAvailable = llmConfigured || Boolean(settings.providerUrl);
-  const inputStyle = { flex: 1, padding: '10px 14px', fontSize: 16, borderRadius: 8, border: '1px solid #bbb' } as const;
-  const linkButton = {
-    border: 'none',
-    background: 'none',
-    color: '#4054b2',
-    cursor: 'pointer',
-    padding: 0,
-    fontSize: 13,
-    textDecoration: 'underline',
-  } as const;
 
   return (
-    <main style={{ fontFamily: 'system-ui', maxWidth: 760, margin: '3rem auto', padding: '0 1rem', lineHeight: 1.5 }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline' }}>
-        <h1 style={{ marginBottom: 4 }}>🪶 Honeyguide</h1>
+    <main className="hg-app">
+      <header className="hg-header">
+        <h1 className="hg-brand">🪶 Honeyguide</h1>
         <button
           onClick={() => setShowSettings((s) => !s)}
-          style={{ border: '1px solid #bbb', background: showSettings ? '#eef1ff' : '#fff', borderRadius: 8, padding: '6px 12px', cursor: 'pointer', fontSize: 14 }}
+          className="hg-btn hg-btn-ghost hg-btn-small"
+          aria-expanded={showSettings}
         >
           ⚙ Settings
         </button>
-      </div>
-      <p style={{ color: '#555', marginTop: 0 }}>
+      </header>
+      <p className="hg-tagline">
         Verified supporting resources for your teaching — every link checked, nothing generated.
       </p>
 
@@ -739,60 +730,63 @@ export function App() {
         />
       )}
 
-      <div style={{ display: 'flex', gap: 8, margin: '1.5rem 0 0.5rem', alignItems: 'flex-start' }}>
+      <div className="hg-search">
         {batchMode && !doc ? (
           <textarea
+            className="hg-textarea"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             aria-label="Topics, one per line"
             placeholder={'One topic per line, e.g.\nsupply chain resilience\nforecasting fundamentals\nlean operations'}
             rows={4}
-            style={{ ...inputStyle, resize: 'vertical', fontFamily: 'inherit' }}
+            style={{ flex: 1 }}
           />
         ) : (
           <input
+            className="hg-input"
             value={topic}
             onChange={(e) => setTopic(e.target.value)}
             onKeyDown={(e) => e.key === 'Enter' && run()}
             aria-label="Topic"
             placeholder={doc ? `Using document: ${doc.name}` : 'Topic, e.g. supply chain resilience'}
             disabled={Boolean(doc)}
-            style={inputStyle}
+            style={{ flex: 1 }}
           />
         )}
         <button
+          className="hg-btn hg-btn-primary"
           onClick={run}
           disabled={loading || (!doc && !topic.trim())}
-          style={{ padding: '10px 22px', fontSize: 16, borderRadius: 8, border: 'none', background: '#4054b2', color: '#fff', cursor: 'pointer' }}
         >
           {loading ? 'Searching…' : 'Suggest'}
         </button>
       </div>
-      <div style={{ marginBottom: '1.5rem', fontSize: 13, color: '#555', display: 'flex', gap: 16, flexWrap: 'wrap' }}>
+
+      <div className="hg-controls">
         {doc ? (
           <span>
             📄 {doc.name} ({Math.round(doc.text.length / 1000)}k chars){' '}
-            <button onClick={() => setDoc(null)} style={{ border: 'none', background: 'none', color: '#4054b2', cursor: 'pointer' }}>
+            <button onClick={() => setDoc(null)} className="hg-btn-quiet">
               ✕ clear
             </button>
           </span>
         ) : (
-          <label style={{ cursor: 'pointer', color: '#4054b2' }}>
+          <label className="hg-control hg-link">
             📎 …or upload a document (PDF, DOCX, TXT, MD)
             <input
               type="file"
               accept=".pdf,.docx,.txt,.md"
-              style={{ display: 'none' }}
+              className="hg-sr-only"
               onChange={(e) => e.target.files?.[0] && uploadDoc(e.target.files[0])}
             />
           </label>
         )}
-        <label style={{ cursor: 'pointer', color: '#4054b2' }}>
+        <label className="hg-control hg-link">
           📂 Open collection
           <input
             type="file"
             accept=".json,application/json"
-            style={{ display: 'none' }}
+            className="hg-sr-only"
             onChange={(e) => {
               const file = e.target.files?.[0];
               if (file) openCollection(file);
@@ -801,18 +795,18 @@ export function App() {
           />
         </label>
         {brief ? (
-          <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+          <span className="hg-brief">
             🎤 {briefSummary(brief)}
-            <button onClick={() => setShowInterview(true)} style={linkButton}>
+            <button onClick={() => setShowInterview(true)} className="hg-btn-quiet">
               edit
             </button>
-            <button onClick={() => setBrief(null)} style={linkButton}>
+            <button onClick={() => setBrief(null)} className="hg-btn-quiet">
               clear
             </button>
           </span>
         ) : (
           <>
-            <label style={{ cursor: 'pointer' }}>
+            <label className="hg-control">
               <input
                 type="checkbox"
                 checked={counterpoint}
@@ -820,41 +814,36 @@ export function App() {
               />{' '}
               ⚖ Include counterpoints
             </label>
-            <button onClick={() => setShowInterview(true)} style={linkButton}>
+            <button onClick={() => setShowInterview(true)} className="hg-btn-quiet">
               🎤 Interview me
             </button>
           </>
         )}
         {batchAllowed && !doc && (
-          <label style={{ cursor: 'pointer' }}>
-            <input type="checkbox" checked={batchMode} onChange={(e) => setBatchMode(e.target.checked)} />{' '}
+          <label className="hg-control">
+            <input
+              type="checkbox"
+              checked={batchMode}
+              onChange={(e) => setBatchMode(e.target.checked)}
+            />{' '}
             📚 Batch (one topic per line)
           </label>
         )}
       </div>
 
-      <details style={{ marginBottom: '1.25rem', fontSize: 13 }}>
-        <summary style={{ cursor: 'pointer', color: '#4054b2' }}>
+      <details className="hg-details">
+        <summary>
           🎯 Unit outcomes {outcomes.length ? `(${outcomes.length})` : '(optional)'}
         </summary>
         <textarea
+          className="hg-textarea"
           value={outcomesText}
           onChange={(e) => setOutcomesText(e.target.value)}
           rows={4}
           aria-label="Unit outcomes or outline"
           placeholder={'Paste outcomes or a unit outline, e.g.\nLearning outcomes\n1. Explain how spaced repetition improves retention\n2. Evaluate supply-chain resilience strategies'}
-          style={{
-            width: '100%',
-            marginTop: 8,
-            padding: '10px 14px',
-            fontSize: 14,
-            borderRadius: 8,
-            border: '1px solid #bbb',
-            resize: 'vertical',
-            fontFamily: 'inherit',
-          }}
         />
-        <p style={{ color: '#777', margin: '6px 0 0' }}>
+        <p className="hg-help">
           A plain list or a unit outline works — headings, week labels and list markers are
           ignored. Resources are matched to outcomes locally; confirm the ones you want, and
           only confirmed tags appear in exports. Re-run after changing outcomes.
@@ -862,10 +851,10 @@ export function App() {
       </details>
 
       {!llmAvailable && (
-        <p style={{ fontSize: 13, color: '#555' }}>
+        <p className="hg-note">
           💡 No AI provider configured — results will carry extracted descriptions instead of
           teaching rationales.{' '}
-          <button onClick={() => setShowSettings(true)} style={{ border: 'none', background: 'none', color: '#4054b2', cursor: 'pointer', padding: 0, fontSize: 13 }}>
+          <button onClick={() => setShowSettings(true)} className="hg-btn-quiet">
             Configure one in Settings.
           </button>
         </p>
@@ -873,12 +862,12 @@ export function App() {
 
       <div aria-live="polite">
         {error && (
-          <p role="alert" style={{ color: '#b3261e' }}>
+          <p role="alert" className="hg-error">
             Error: {error}
           </p>
         )}
         {loading && (
-          <p role="status" style={{ color: '#555' }}>
+          <p role="status" className="hg-loading">
             <span className="hg-spinner" aria-hidden="true" />
             Retrieving, verifying and annotating — this can take a moment…
           </p>
@@ -888,9 +877,7 @@ export function App() {
       {result && (
         <>
           {collectionLabel && (
-            <p style={{ fontSize: 13, color: '#555', marginTop: 0 }}>
-              📂 Collection: {collectionLabel}
-            </p>
+            <p className="hg-collection-label">📂 Collection: {collectionLabel}</p>
           )}
           <ResultHeader
             count={result.resources.length}
@@ -918,15 +905,7 @@ export function App() {
               {hasActiveFilters(filters) && (
                 <button
                   onClick={() => setFilters(DEFAULT_FILTERS)}
-                  style={{
-                    border: 'none',
-                    background: 'none',
-                    color: '#4054b2',
-                    cursor: 'pointer',
-                    padding: 0,
-                    fontSize: 14,
-                    textDecoration: 'underline',
-                  }}
+                  className="hg-btn-quiet"
                 >
                   Clear filters
                 </button>
@@ -949,8 +928,8 @@ export function App() {
             onDownload={download}
           />
           {batchResult.map((entry) => (
-            <section key={entry.topic} style={{ marginTop: 24 }}>
-              <h2 style={{ fontSize: 17, borderBottom: '2px solid #e3e3e3', paddingBottom: 4 }}>
+            <section key={entry.topic}>
+              <h2 className="hg-result-title" style={{ marginTop: 28 }}>
                 {entry.topic}
               </h2>
               <ResourceSections
@@ -978,25 +957,21 @@ function ResultHeader({
   onRecheck?: () => void;
   rechecking?: boolean;
 }) {
-  const buttonStyle = {
-    padding: '6px 12px',
-    borderRadius: 6,
-    border: '1px solid #bbb',
-    background: '#fff',
-    cursor: 'pointer',
-    fontSize: 13,
-  } as const;
   return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
-      <h2 style={{ fontSize: 18 }}>{count} resources</h2>
-      <span style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
+    <div className="hg-result-header">
+      <h2 className="hg-result-title">{count} resources</h2>
+      <span className="hg-actions">
         {onSave && (
-          <button onClick={onSave} style={buttonStyle}>
+          <button onClick={onSave} className="hg-btn hg-btn-ghost hg-btn-small">
             💾 Save collection
           </button>
         )}
         {onRecheck && (
-          <button onClick={onRecheck} disabled={rechecking} style={buttonStyle}>
+          <button
+            onClick={onRecheck}
+            disabled={rechecking}
+            className="hg-btn hg-btn-ghost hg-btn-small"
+          >
             {rechecking ? 'Checking…' : '🔗 Recheck links'}
           </button>
         )}
@@ -1011,7 +986,7 @@ function ResultHeader({
           <button
             key={format}
             onClick={() => onDownload(format, ext)}
-            style={{ padding: '6px 12px', borderRadius: 6, border: '1px solid #bbb', background: '#fff', cursor: 'pointer', fontSize: 13 }}
+            className="hg-btn hg-btn-ghost hg-btn-small"
           >
             ⬇ {name}
           </button>
@@ -1024,18 +999,10 @@ function ResultHeader({
 function RecheckReport({ entries }: { entries: RecheckEntry[] }) {
   const changed = entries.filter((e) => e.changed);
   return (
-    <div
-      style={{
-        marginTop: 12,
-        padding: '10px 14px',
-        background: changed.length ? '#fff8e6' : '#f2fbf5',
-        borderRadius: 8,
-        fontSize: 13,
-      }}
-    >
+    <div className={`hg-report ${changed.length ? 'hg-report-warn' : 'hg-report-ok'}`}>
       <strong>Link check:</strong> {entries.length} resources, {changed.length} changed.
       {changed.length > 0 && (
-        <ul style={{ margin: '6px 0 0', paddingLeft: 18 }}>
+        <ul>
           {changed.map((e) => (
             <li key={e.resource.url}>
               {e.resource.title}: {e.previous} → <strong>{e.current}</strong>
@@ -1134,8 +1101,8 @@ function ResourceSections({
       ))}
       {counterpoints.length > 0 && (
         <>
-          <h3 style={{ fontSize: 15, marginTop: 20, color: '#6a3fb2' }}>
-            ⚖ Counterpoints — material that disagrees with or complicates the framing
+          <h3 className="hg-section-title">
+            ⚖ Counterpoints — disagreeing or complicating material
           </h3>
           {counterpoints.map((r) => (
             <ResourceCard key={r.url} r={r} onToggleAlignment={onToggleAlignment} />
@@ -1154,49 +1121,44 @@ function ResourceCard({
   onToggleAlignment: (url: string) => void;
 }) {
   return (
-    <article style={{ display: 'flex', gap: 14, padding: '14px 0', borderTop: '1px solid #e3e3e3' }}>
-      {r.thumbnailUrl && (
-        <img src={r.thumbnailUrl} alt="" style={{ width: 96, height: 72, objectFit: 'cover', borderRadius: 6, flexShrink: 0 }} />
-      )}
-      <div>
-        <a href={r.url} target="_blank" rel="noreferrer" style={{ fontWeight: 600, color: '#1a3faa' }}>
+    <article className="hg-card">
+      {r.thumbnailUrl && <img src={r.thumbnailUrl} alt="" className="hg-card-thumb" />}
+      <div className="hg-card-body">
+        <a href={r.url} target="_blank" rel="noreferrer" className="hg-card-title">
           {r.title}
         </a>
-        <div style={{ fontSize: 13, color: '#555', margin: '4px 0' }}>
+        <div className="hg-card-meta">
           {r.stance === 'counterpoint' && <Badge text="⚖ counterpoint" color="#6a3fb2" />}
           <Badge text={r.format} />
           <Badge text={r.sourceType} />
           <Badge text={verificationLabel(r)} color={VERIFY_COLOR[r.verification]} />
           {r.access === 'open' && <Badge text="open access" color="#1a7f4e" />}
           {r.access === 'subscription' && <Badge text="subscription" color="#a06a00" />}
-          {r.licensing !== 'unknown' && <Badge text={r.licensing.replace(/-/g, ' ')} color="#2e6f40" />}
+          {r.licensing !== 'unknown' && (
+            <Badge text={r.licensing.replace(/-/g, ' ')} color="#2e6f40" />
+          )}
           {r.accessibilityNotes.map((note) => (
             <Badge key={note} text={`♿ ${note}`} color="#376a9e" />
           ))}
-          {r.commerciallyInterested && <Badge text="⚠ commercially interested" color="#a06a00" />}
-          {r.year && <span style={{ marginRight: 8 }}>{r.year}</span>}
+          {r.commerciallyInterested && (
+            <Badge text="⚠ commercially interested" color="#a06a00" />
+          )}
+          {r.year && <span>{r.year}</span>}
           {r.authors.length > 0 && <span>{r.authors.slice(0, 3).join(', ')}</span>}
-          {r.venue && <span style={{ color: '#888' }}> · {r.venue}</span>}
+          {r.venue && <span className="hg-meta-text">· {r.venue}</span>}
         </div>
         {r.annotation.text && (
-          <p style={{ margin: '4px 0 0', fontSize: 14 }}>
-            <em style={{ color: '#777', fontStyle: 'normal', fontSize: 12 }}>
-              {r.annotation.source === 'llm' ? 'Rationale (generated): ' : 'Description (extracted): '}
+          <p className="hg-annotation">
+            <em className="hg-provenance">
+              {r.annotation.source === 'llm'
+                ? 'Rationale (generated): '
+                : 'Description (extracted): '}
             </em>
             {r.annotation.text}
           </p>
         )}
         {r.alignment && (
-          <div
-            style={{
-              display: 'flex',
-              alignItems: 'baseline',
-              gap: 8,
-              flexWrap: 'wrap',
-              marginTop: 6,
-              fontSize: 13,
-            }}
-          >
+          <div className="hg-alignment">
             <Badge
               text={`outcome · ${r.alignment.confidence}`}
               color={
@@ -1207,33 +1169,23 @@ function ResourceCard({
                     : '#666'
               }
             />
-            <span>{r.alignment.outcomeText}</span>
+            <span className="hg-alignment-text">{r.alignment.outcomeText}</span>
             <span
-              style={{ color: '#999', fontSize: 11 }}
+              className="hg-score"
               title={`Proposed by ${r.alignment.proposedBy}; score ${r.alignment.score.toFixed(2)}`}
             >
               {Math.round(r.alignment.score * 100)}%
             </span>
             <button
               onClick={() => onToggleAlignment(r.url)}
-              style={{
-                border: '1px solid #bbb',
-                background: r.alignment.confirmed ? '#1a7f4e' : '#fff',
-                color: r.alignment.confirmed ? '#fff' : '#4054b2',
-                borderRadius: 6,
-                padding: '2px 8px',
-                cursor: 'pointer',
-                fontSize: 12,
-              }}
+              className={`hg-confirm ${r.alignment.confirmed ? 'is-confirmed' : ''}`}
             >
               {r.alignment.confirmed ? '✓ confirmed' : 'Confirm'}
             </button>
           </div>
         )}
         {r.alignment?.reason && (
-          <div style={{ color: '#666', fontSize: 12, marginTop: 2 }}>
-            Why (generated): {r.alignment.reason}
-          </div>
+          <div className="hg-reason">Why (generated): {r.alignment.reason}</div>
         )}
       </div>
     </article>
@@ -1254,51 +1206,44 @@ function Footers({
   return (
     <>
       {result.componentHealth.videos === 'unavailable' && !hasYoutubeKey && (
-        <p style={{ fontSize: 13, color: '#555', marginTop: 16, padding: '10px 14px', background: '#f4f6ff', borderRadius: 8 }}>
+        <p className="hg-note">
           🎬 Want video results too? Add your own YouTube API key in{' '}
-          <button onClick={openSettings} style={{ border: 'none', background: 'none', color: '#4054b2', cursor: 'pointer', padding: 0, fontSize: 13 }}>
+          <button onClick={openSettings} className="hg-btn-quiet">
             Settings
           </button>
-          , or{' '}
-          <a href="https://github.com/michael-borck/honeyguide#self-hosting" style={{ color: '#4054b2' }}>
-            self-host
-          </a>{' '}
+          , or <a className="hg-link" href="https://github.com/michael-borck/honeyguide#self-hosting">self-host</a>{' '}
           / grab the{' '}
-          <a href="https://github.com/michael-borck/honeyguide/releases/latest" style={{ color: '#4054b2' }}>
+          <a
+            className="hg-link"
+            href="https://github.com/michael-borck/honeyguide/releases/latest"
+          >
             desktop app
           </a>
           .
         </p>
       )}
       {result.componentHealth.alignment === 'unavailable' && (
-        <p
-          style={{
-            fontSize: 13,
-            color: '#555',
-            marginTop: 12,
-            padding: '10px 14px',
-            background: '#fff8e6',
-            borderRadius: 8,
-          }}
-        >
+        <p className="hg-note hg-note-warn">
           🎯 Outcome alignment is unavailable. Configure a local decision or embedding model in
           Settings to match resources to outcomes.
         </p>
       )}
-      <p style={{ fontSize: 12, color: '#888', marginTop: 12 }}>
-        Components:{' '}
-        {Object.entries(result.componentHealth)
-          .map(([k, v]) => `${k} ${v === 'ok' ? '✓' : `(${v})`}`)
-          .join(' · ')}
-      </p>
-      {health?.sources && (
-        <p style={{ fontSize: 12, color: '#888', marginTop: 4 }}>
-          Retrieval: {healthValue(health.sources.papers)} · web {healthValue(health.sources.web)} ·
-          video {healthValue(health.sources.videos)} · open access{' '}
-          {healthValue(health.sources.openAccess)}
-          {health.version ? ` · v${health.version}` : ''}
+      <div className="hg-foot">
+        <p>
+          Components:{' '}
+          {Object.entries(result.componentHealth)
+            .map(([k, v]) => `${k} ${v === 'ok' ? '✓' : `(${v})`}`)
+            .join(' · ')}
         </p>
-      )}
+        {health?.sources && (
+          <p>
+            Retrieval: {healthValue(health.sources.papers)} · web{' '}
+            {healthValue(health.sources.web)} · video {healthValue(health.sources.videos)} · open
+            access {healthValue(health.sources.openAccess)}
+            {health.version ? ` · v${health.version}` : ''}
+          </p>
+        )}
+      </div>
     </>
   );
 }
@@ -1314,15 +1259,6 @@ function InterviewPanel({
 }) {
   const [draft, setDraft] = useState<BriefAnswers>(initial ?? defaultBrief());
   const set = (patch: Partial<BriefAnswers>) => setDraft({ ...draft, ...patch });
-  const legend = { fontSize: 13, color: '#444', marginTop: 14, fontWeight: 600 } as const;
-  const group = { display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 6 } as const;
-  const optionLabel = {
-    fontSize: 13,
-    color: '#333',
-    display: 'flex',
-    gap: 4,
-    alignItems: 'center',
-  } as const;
   const option = (
     name: string,
     value: string,
@@ -1330,30 +1266,22 @@ function InterviewPanel({
     current: string,
     onSelect: () => void,
   ) => (
-    <label key={value} style={optionLabel}>
+    <label key={value}>
       <input type="radio" name={name} checked={current === value} onChange={onSelect} /> {label}
     </label>
   );
 
   return (
-    <section
-      style={{
-        border: '1px solid #ccd',
-        borderRadius: 10,
-        padding: '14px 18px',
-        margin: '1rem 0',
-        background: '#fafbff',
-      }}
-    >
-      <strong style={{ fontSize: 15 }}>Interview</strong>
-      <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
+    <section className="hg-panel hg-form">
+      <h2 className="hg-panel-title">Interview</h2>
+      <p className="hg-help">
         Four quick questions. The brief shapes stance, filters and how rationales are framed;
         retrieval stays the same.
       </p>
 
-      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-        <legend style={legend}>1. Should this support or challenge the current framing?</legend>
-        <div style={group}>
+      <fieldset>
+        <legend>1. Should this support or challenge the current framing?</legend>
+        <div className="hg-options">
           {option('stance', 'support', 'Support it', draft.stance, () =>
             set({ stance: 'support' }),
           )}
@@ -1364,9 +1292,9 @@ function InterviewPanel({
         </div>
       </fieldset>
 
-      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-        <legend style={legend}>2. What will students already have?</legend>
-        <div style={group}>
+      <fieldset>
+        <legend>2. What will students already have?</legend>
+        <div className="hg-options">
           {option('prior', 'none', 'Nothing yet', draft.priorKnowledge, () =>
             set({ priorKnowledge: 'none' }),
           )}
@@ -1381,24 +1309,17 @@ function InterviewPanel({
           )}
         </div>
         <input
+          type="text"
           value={draft.priorNote}
           onChange={(e) => set({ priorNote: e.target.value })}
           placeholder="Anything else about what they have? (optional)"
           aria-label="Additional prior knowledge"
-          style={{
-            width: '100%',
-            marginTop: 8,
-            padding: '8px 10px',
-            borderRadius: 6,
-            border: '1px solid #bbb',
-            fontSize: 13,
-          }}
         />
       </fieldset>
 
-      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-        <legend style={legend}>3. When will they use it?</legend>
-        <div style={group}>
+      <fieldset>
+        <legend>3. When will they use it?</legend>
+        <div className="hg-options">
           {option('timing', 'pre-class', 'Before class', draft.timing, () =>
             set({ timing: 'pre-class' }),
           )}
@@ -1414,10 +1335,10 @@ function InterviewPanel({
         </div>
       </fieldset>
 
-      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
-        <legend style={legend}>4. Any constraints?</legend>
-        <div style={group}>
-          <label style={optionLabel}>
+      <fieldset>
+        <legend>4. Any constraints?</legend>
+        <div className="hg-options">
+          <label>
             <input
               type="checkbox"
               checked={draft.openAccessOnly}
@@ -1425,7 +1346,7 @@ function InterviewPanel({
             />{' '}
             Open access only
           </label>
-          <label style={optionLabel}>
+          <label>
             <input
               type="checkbox"
               checked={draft.noVideo}
@@ -1433,7 +1354,7 @@ function InterviewPanel({
             />{' '}
             No video
           </label>
-          <label style={optionLabel}>
+          <label>
             <input
               type="checkbox"
               checked={draft.recentOnly}
@@ -1444,37 +1365,19 @@ function InterviewPanel({
         </div>
       </fieldset>
 
-      <p style={{ fontSize: 12, color: '#777', margin: '12px 0 0' }}>
-        Brief: {briefSummary(draft)}
-      </p>
+      <p className="hg-help">Brief: {briefSummary(draft)}</p>
 
-      <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+      <div className="hg-form-actions">
         <button
+          className="hg-btn hg-btn-primary"
           onClick={() => {
             onApply(draft);
             onClose();
           }}
-          style={{
-            padding: '7px 16px',
-            borderRadius: 6,
-            border: 'none',
-            background: '#4054b2',
-            color: '#fff',
-            cursor: 'pointer',
-          }}
         >
           Use this brief
         </button>
-        <button
-          onClick={onClose}
-          style={{
-            padding: '7px 16px',
-            borderRadius: 6,
-            border: '1px solid #bbb',
-            background: '#fff',
-            cursor: 'pointer',
-          }}
-        >
+        <button className="hg-btn hg-btn-ghost" onClick={onClose}>
           Skip
         </button>
       </div>
@@ -1557,55 +1460,80 @@ function SettingsPanel({
     }
   }
 
-  const field = { display: 'block', width: '100%', padding: '8px 10px', borderRadius: 6, border: '1px solid #bbb', fontSize: 14, marginTop: 4 } as const;
-  const label = { fontSize: 13, color: '#444', display: 'block', marginTop: 12 } as const;
-
   return (
-    <section style={{ border: '1px solid #ccd', borderRadius: 10, padding: '14px 18px', margin: '1rem 0', background: '#fafbff' }}>
-      <strong style={{ fontSize: 15 }}>Settings</strong>
-      <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
+    <section className="hg-panel hg-form">
+      <h2 className="hg-panel-title">Settings</h2>
+      <p className="hg-help">
         Keys are stored in this browser only and sent per request — never saved on the server.
       </p>
 
-      <label style={label}>
+      <label>
         AI provider URL (Ollama or compatible)
-        <input style={field} value={draft.providerUrl} placeholder="http://localhost:11434"
-          onChange={(e) => setDraft({ ...draft, providerUrl: e.target.value })} />
+        <input
+          type="text"
+          value={draft.providerUrl}
+          placeholder="http://localhost:11434"
+          onChange={(e) => setDraft({ ...draft, providerUrl: e.target.value })}
+        />
       </label>
-      <button onClick={detectOllama} disabled={detecting}
-        style={{ marginTop: 6, padding: '5px 10px', borderRadius: 6, border: '1px solid #bbb', background: '#fff', cursor: 'pointer', fontSize: 12 }}>
-        {detecting ? 'Detecting…' : '🔍 Detect local Ollama'}
-      </button>
-      {detectNote && <span style={{ fontSize: 12, color: '#555', marginLeft: 8 }}>{detectNote}</span>}
+      <div style={{ marginTop: 8 }}>
+        <button
+          className="hg-btn hg-btn-ghost hg-btn-small"
+          onClick={detectOllama}
+          disabled={detecting}
+        >
+          {detecting ? 'Detecting…' : '🔍 Detect local Ollama'}
+        </button>
+      </div>
+      {detectNote && <p className="hg-help">{detectNote}</p>}
 
-      <label style={label}>
+      <label>
         API key (if the provider needs one)
-        <input style={field} type="password" value={draft.apiKey}
-          onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })} />
+        <input
+          type="password"
+          value={draft.apiKey}
+          onChange={(e) => setDraft({ ...draft, apiKey: e.target.value })}
+        />
       </label>
 
-      <label style={label}>
+      <label>
         Model
         {models.length > 0 ? (
-          <select style={field} value={draft.model} onChange={(e) => setDraft({ ...draft, model: e.target.value })}>
-            {models.map((m) => <option key={m}>{m}</option>)}
+          <select
+            value={draft.model}
+            onChange={(e) => setDraft({ ...draft, model: e.target.value })}
+          >
+            {models.map((m) => (
+              <option key={m}>{m}</option>
+            ))}
           </select>
         ) : (
-          <input style={field} value={draft.model} placeholder="llama3.1:8b"
-            onChange={(e) => setDraft({ ...draft, model: e.target.value })} />
+          <input
+            type="text"
+            value={draft.model}
+            placeholder="llama3.1:8b"
+            onChange={(e) => setDraft({ ...draft, model: e.target.value })}
+          />
         )}
       </label>
 
-      <label style={label}>
+      <label>
         YouTube API key (enables video search)
-        <input style={field} type="password" value={draft.youtubeApiKey}
-          onChange={(e) => setDraft({ ...draft, youtubeApiKey: e.target.value })} />
+        <input
+          type="password"
+          value={draft.youtubeApiKey}
+          onChange={(e) => setDraft({ ...draft, youtubeApiKey: e.target.value })}
+        />
       </label>
 
-      <label style={label}>
+      <label>
         Re-ranking (how results are ordered)
-        <select style={field} value={draft.rerankMode}
-          onChange={(e) => setDraft({ ...draft, rerankMode: e.target.value as Settings['rerankMode'] })}>
+        <select
+          value={draft.rerankMode}
+          onChange={(e) =>
+            setDraft({ ...draft, rerankMode: e.target.value as Settings['rerankMode'] })
+          }
+        >
           <option value="auto">Auto — use a local decision model if detected</option>
           <option value="off">Off — diversity only</option>
           <option value="embeddings">Embeddings — fast, local</option>
@@ -1613,7 +1541,7 @@ function SettingsPanel({
         </select>
       </label>
       {draft.rerankMode === 'auto' && (
-        <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
+        <p className="hg-help">
           {detected?.decisionModels.length
             ? `Using ${detected.decisionModels[0]} at ${detected.url}.`
             : detected?.embeddingModels.length
@@ -1624,24 +1552,36 @@ function SettingsPanel({
 
       {draft.rerankMode === 'decision' && (
         <>
-          <label style={label}>
+          <label>
             Decision model URL
-            <input style={field} value={draft.decisionUrl} placeholder="http://localhost:11434"
-              onChange={(e) => setDraft({ ...draft, decisionUrl: e.target.value })} />
+            <input
+              type="text"
+              value={draft.decisionUrl}
+              placeholder="http://localhost:11434"
+              onChange={(e) => setDraft({ ...draft, decisionUrl: e.target.value })}
+            />
           </label>
-          <label style={label}>
+          <label>
             Decision model
             {decisionModels.length > 0 ? (
-              <select style={field} value={draft.decisionModel}
-                onChange={(e) => setDraft({ ...draft, decisionModel: e.target.value })}>
-                {decisionModels.map((m) => <option key={m}>{m}</option>)}
+              <select
+                value={draft.decisionModel}
+                onChange={(e) => setDraft({ ...draft, decisionModel: e.target.value })}
+              >
+                {decisionModels.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
               </select>
             ) : (
-              <input style={field} value={draft.decisionModel} placeholder="tev1:0.8b"
-                onChange={(e) => setDraft({ ...draft, decisionModel: e.target.value })} />
+              <input
+                type="text"
+                value={draft.decisionModel}
+                placeholder="tev1:0.8b"
+                onChange={(e) => setDraft({ ...draft, decisionModel: e.target.value })}
+              />
             )}
           </label>
-          <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
+          <p className="hg-help">
             Local Ollama 0.35+ decision models judge relevance directly.
             <code> ollama pull tev1:0.8b</code> is the fast default (~7–10s);
             <code> tev1:4b</code> is slower (~25s) with slightly higher accuracy;
@@ -1652,37 +1592,52 @@ function SettingsPanel({
 
       {draft.rerankMode === 'embeddings' && (
         <>
-          <label style={label}>
+          <label>
             Embeddings URL
-            <input style={field} value={draft.embeddingUrl} placeholder="http://localhost:11434"
-              onChange={(e) => setDraft({ ...draft, embeddingUrl: e.target.value })} />
+            <input
+              type="text"
+              value={draft.embeddingUrl}
+              placeholder="http://localhost:11434"
+              onChange={(e) => setDraft({ ...draft, embeddingUrl: e.target.value })}
+            />
           </label>
-          <label style={label}>
+          <label>
             Embedding model
             {embeddingModels.length > 0 ? (
-              <select style={field} value={draft.embeddingModel}
-                onChange={(e) => setDraft({ ...draft, embeddingModel: e.target.value })}>
-                {embeddingModels.map((m) => <option key={m}>{m}</option>)}
+              <select
+                value={draft.embeddingModel}
+                onChange={(e) => setDraft({ ...draft, embeddingModel: e.target.value })}
+              >
+                {embeddingModels.map((m) => (
+                  <option key={m}>{m}</option>
+                ))}
               </select>
             ) : (
-              <input style={field} value={draft.embeddingModel} placeholder="nomic-embed-text"
-                onChange={(e) => setDraft({ ...draft, embeddingModel: e.target.value })} />
+              <input
+                type="text"
+                value={draft.embeddingModel}
+                placeholder="nomic-embed-text"
+                onChange={(e) => setDraft({ ...draft, embeddingModel: e.target.value })}
+              />
             )}
           </label>
-          <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
-            Fast and local; a good default is <code>nomic-embed-text</code>
-            (<code>ollama pull nomic-embed-text</code>).
+          <p className="hg-help">
+            Fast and local; a good default is <code>nomic-embed-text</code> (<code>ollama pull nomic-embed-text</code>).
           </p>
         </>
       )}
 
-      <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
-        <button onClick={() => { onSave(draft); onClose(); }}
-          style={{ padding: '7px 16px', borderRadius: 6, border: 'none', background: '#4054b2', color: '#fff', cursor: 'pointer' }}>
+      <div className="hg-form-actions">
+        <button
+          className="hg-btn hg-btn-primary"
+          onClick={() => {
+            onSave(draft);
+            onClose();
+          }}
+        >
           Save
         </button>
-        <button onClick={onClose}
-          style={{ padding: '7px 16px', borderRadius: 6, border: '1px solid #bbb', background: '#fff', cursor: 'pointer' }}>
+        <button className="hg-btn hg-btn-ghost" onClick={onClose}>
           Cancel
         </button>
       </div>
@@ -1693,15 +1648,8 @@ function SettingsPanel({
 function Badge({ text, color = '#4054b2' }: { text: string; color?: string }) {
   return (
     <span
-      style={{
-        display: 'inline-block',
-        padding: '1px 8px',
-        marginRight: 6,
-        borderRadius: 10,
-        fontSize: 12,
-        color: '#fff',
-        background: color,
-      }}
+      className="hg-badge"
+      style={{ color, borderColor: `${color}55`, background: `${color}14` }}
     >
       {text}
     </span>
