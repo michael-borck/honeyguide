@@ -16,6 +16,7 @@ interface Alignment {
   score: number;
   confidence: 'high' | 'medium' | 'low';
   proposedBy: 'decision' | 'embeddings';
+  reason?: string;
   confirmed: boolean;
 }
 
@@ -71,13 +72,59 @@ interface CollectionFile {
 
 const OUTCOMES_KEY = 'honeyguide-outcomes';
 
-/** One outcome per line; list markers and numbering are stripped. */
+const OUTCOMES_HEADING =
+  /^(?:(?:learning|intended|course|unit|subject|module|program|programme|graduate)\s+)*outcomes?$|^(?:ilos?|clos?|ulos?|slos?)$/i;
+const OTHER_HEADING =
+  /^(?:week|module|topic|unit|lecture|seminar|workshop|assessment|assessments|resources|readings?|activities|schedule|content|description|overview|introduction)\b/i;
+
+/** Extract outcomes from a plain list or a pasted unit outline. */
 function parseOutcomes(text: string): Outcome[] {
-  return text
-    .split(/\r?\n/)
-    .map((line) => line.replace(/^\s*(?:[-*•]|\d+[.)])\s*/, '').trim())
-    .filter(Boolean)
-    .map((outcomeText, index) => ({ id: `o${index}`, text: outcomeText }));
+  const lines = text.split(/\r?\n/);
+  let start = 0;
+  for (let i = lines.length - 1; i >= 0; i--) {
+    if (OUTCOMES_HEADING.test(headingText(lines[i]))) {
+      start = i + 1;
+      break;
+    }
+  }
+  const hasOutcomesHeading = start > 0;
+  const seen = new Set<string>();
+  const texts: string[] = [];
+  for (let i = start; i < lines.length; i++) {
+    const line = lines[i].trim();
+    if (!line) continue;
+    const clean = headingText(line);
+    if (OUTCOMES_HEADING.test(clean)) continue;
+    if (OTHER_HEADING.test(clean)) {
+      if (hasOutcomesHeading) break;
+      continue;
+    }
+    const outcome = stripOutcomePrefix(line);
+    if (outcome.length < 8) continue;
+    const key = outcome.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    texts.push(outcome);
+  }
+  return texts.map((outcomeText, index) => ({ id: `o${index}`, text: outcomeText }));
+}
+
+function headingText(line: string): string {
+  return line
+    .replace(/^[#*\s]+/, '')
+    .replace(/[*\s]+$/, '')
+    .replace(/:$/, '')
+    .trim();
+}
+
+function stripOutcomePrefix(line: string): string {
+  return line
+    .replace(/^\s*(?:[-*•·▪]|\d+(?:\.\d+)*[.)]?)\s*/, '')
+    .replace(/^(?:LO|ILO|CLO|ULO|SLO)\s*\d+\s*[:.)-]?\s*/i, '')
+    .replace(/^students?\s+(?:will|should)\s+be\s+able\s+to\s+/i, '')
+    .replace(/^students?\s+can\s+/i, '')
+    .replace(/^be\s+able\s+to\s+/i, '')
+    .trim();
 }
 
 interface RecheckEntry {
@@ -620,8 +667,8 @@ export function App() {
           value={outcomesText}
           onChange={(e) => setOutcomesText(e.target.value)}
           rows={4}
-          aria-label="Unit outcomes, one per line"
-          placeholder={'One outcome per line, e.g.\nExplain how spaced repetition improves retention\nEvaluate supply-chain resilience strategies'}
+          aria-label="Unit outcomes or outline"
+          placeholder={'Paste outcomes or a unit outline, e.g.\nLearning outcomes\n1. Explain how spaced repetition improves retention\n2. Evaluate supply-chain resilience strategies'}
           style={{
             width: '100%',
             marginTop: 8,
@@ -634,8 +681,9 @@ export function App() {
           }}
         />
         <p style={{ color: '#777', margin: '6px 0 0' }}>
-          Resources are matched to outcomes locally. Confirm the ones you want; only confirmed
-          tags appear in exports. Re-run after changing outcomes.
+          A plain list or a unit outline works — headings, week labels and list markers are
+          ignored. Resources are matched to outcomes locally; confirm the ones you want, and
+          only confirmed tags appear in exports. Re-run after changing outcomes.
         </p>
       </details>
 
@@ -1008,6 +1056,11 @@ function ResourceCard({
             </button>
           </div>
         )}
+        {r.alignment?.reason && (
+          <div style={{ color: '#666', fontSize: 12, marginTop: 2 }}>
+            Why (generated): {r.alignment.reason}
+          </div>
+        )}
       </div>
     </article>
   );
@@ -1103,6 +1156,11 @@ function SettingsPanel({
       const res = await fetch('/api/detect-ollama');
       const data = await res.json();
       if (data.available) {
+        const foundChat: string[] = Array.isArray(data.chatModels)
+          ? data.chatModels
+          : Array.isArray(data.models)
+            ? data.models
+            : [];
         const foundDecision: string[] = Array.isArray(data.decisionModels)
           ? data.decisionModels
           : [];
@@ -1119,14 +1177,15 @@ function SettingsPanel({
         setDraft((d) => ({
           ...d,
           providerUrl: data.url,
-          model: data.models[0] ?? d.model,
+          model: foundChat[0] ?? d.model,
           decisionUrl: foundDecision.length ? d.decisionUrl || data.url : d.decisionUrl,
           decisionModel: foundDecision[0] ?? (d.decisionModel || 'tev1:0.8b'),
           embeddingUrl: foundEmbedding.length ? d.embeddingUrl || data.url : d.embeddingUrl,
           embeddingModel: foundEmbedding[0] ?? (d.embeddingModel || 'nomic-embed-text'),
         }));
-        setModels(data.models);
+        setModels(foundChat);
         const extra = [
+          foundChat.length ? `${foundChat.length} chat` : null,
           foundDecision.length ? `${foundDecision.length} decision` : null,
           foundEmbedding.length ? `${foundEmbedding.length} embedding` : null,
         ].filter(Boolean);

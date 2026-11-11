@@ -48,6 +48,7 @@ async function llmKeywords(text: string, config: PipelineConfig): Promise<string
         `Reply with a 3-8 word search query capturing its main topic, ` +
         `suitable for an academic search engine. Reply with the query only.`,
       stream: false,
+      think: false,
       options: { num_predict: 30, temperature: 0.1 },
     }),
     signal: AbortSignal.timeout(QUERY_TIMEOUT_MS),

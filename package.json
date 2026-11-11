@@ -20,6 +20,7 @@
     "test": "npm run test --workspaces --if-present",
     "lint": "npm run lint --workspaces --if-present",
     "eval": "npm run build -w @michaelborck/honeyguide-core && node scripts/eval.mjs",
+    "eval:alignment": "npm run build -w @michaelborck/honeyguide-core && node scripts/eval-alignment.mjs",
     "dev:server": "npm run dev -w @michaelborck/honeyguide-server",
     "dev:web": "npm run dev -w @michaelborck/honeyguide-web"
   }

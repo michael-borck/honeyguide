@@ -51,6 +51,7 @@ export async function generateRationale(
       model: config.ollamaModel ?? DEFAULT_MODEL,
       prompt,
       stream: false,
+      think: false,
       options: { num_predict: 120, temperature: 0.3 },
     }),
     signal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),

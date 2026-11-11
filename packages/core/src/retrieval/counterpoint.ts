@@ -45,6 +45,7 @@ async function llmCounterQueries(topic: string, config: PipelineConfig): Promise
         `credible material which DISAGREES with, criticises, or complicates ` +
         `this topic's usual framing. One query per line, queries only.`,
       stream: false,
+      think: false,
       options: { num_predict: 60, temperature: 0.4 },
     }),
     signal: AbortSignal.timeout(QUERY_TIMEOUT_MS),

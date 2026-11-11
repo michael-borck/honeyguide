@@ -66,6 +66,11 @@ export {
   type OutcomeAligner,
 } from './align/outcomes.js';
 export {
+  buildAlignmentReasonPrompt,
+  generateAlignmentReason,
+  addAlignmentReasons,
+} from './align/reasons.js';
+export {
   buildSystemOneRequest,
   parseSystemOneScores,
   balancedSubset,

@@ -36,6 +36,11 @@ function resourceHtml(r: Resource): string {
       (r.annotation.source === 'llm' ? 'Rationale (generated): ' : 'Description (extracted): ') +
       `</em>${escape(r.annotation.text)}</p>`
     : '';
+  const alignmentReason =
+    r.alignment?.confirmed && r.alignment.reason
+      ? `<p style="margin:2px 0 0;font-size:0.9em;color:#666">` +
+        `<em>Outcome rationale (generated): </em>${escape(r.alignment.reason)}</p>`
+      : '';
 
   return (
     `<div style="border-top:1px solid #ddd;padding:10px 0">` +
@@ -45,6 +50,7 @@ function resourceHtml(r: Resource): string {
       : '') +
     `<div style="color:#777;font-size:0.85em">${escape(meta.join(' · '))}</div>` +
     annotation +
+    alignmentReason +
     `</div>`
   );
 }

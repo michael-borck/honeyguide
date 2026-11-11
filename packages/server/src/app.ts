@@ -114,10 +114,22 @@ export function createApp(options: AppOptions): express.Express {
       };
       const models = data.models ?? [];
       const names = models.map((m) => m.name).filter(Boolean);
+      const chatModels = models
+        .filter((m) => {
+          const capabilities = m.capabilities ?? [];
+          return (
+            capabilities.some((c) => c === 'completion' || c === 'tools' || c === 'thinking') &&
+            !capabilities.includes('decision') &&
+            !capabilities.includes('embedding')
+          );
+        })
+        .map((m) => m.name)
+        .filter(Boolean);
       res.json({
         available: true,
         url: base,
         models: names,
+        chatModels,
         decisionModels: models
           .filter((m) => m.capabilities?.includes('decision'))
           .map((m) => m.name)
@@ -132,6 +144,7 @@ export function createApp(options: AppOptions): express.Express {
         available: false,
         url: base,
         models: [],
+        chatModels: [],
         decisionModels: [],
         embeddingModels: [],
       });

@@ -90,20 +90,22 @@ server can store the same documents.
 unavailable, resources still return without outcome tags. The model is never
 asked to invent outcomes or resources.
 
-**Status.** Implemented MVP (ADR-0017): outcome textarea, decision-model
-`Choice` alignment with embedding fallback, confidence-aware near-ties,
+**Status.** Implemented (ADR-0017): outcome textarea and unit-outline
+extraction, decision-model `Choice` alignment with embedding fallback,
+confidence-aware near-ties, an optional one-line reason from the local LLM,
 confirm toggle in the UI, confirmed-only Markdown/LMS export via
-`POST /api/export`, and collection-file persistence. Tested locally with
-`tev1:0.8b`: relevant matches landed with high confidence, off-topic
-resources were left unaligned.
+`POST /api/export`, and collection-file persistence.
 
 **Milestones.**
 
-1. Outcome capture from pasted text. Done (manual list; outline extraction is
-   still heuristic).
+1. Outcome capture from pasted text or a unit outline. Done — headings, week
+   labels, list markers and LO/CLO codes are stripped; the outcomes section is
+   detected when present.
 2. Alignment proposal in the pipeline and UI, labelled as proposed. Done.
 3. Confirm/reject persistence and export of confirmed tags. Done.
-4. Golden-set evaluation of alignment quality. Pending.
+4. Hand-labelled evaluation. Done — `npm run eval:alignment` on 25 resources:
+   84% accuracy, 94% precision, 79% recall, 100% abstention on non-matches,
+   ~2.5s mean per case with `tev1:0.8b`.
 
 **Risks.** Over-tagging (everything maps to everything) — mitigated by the
 `none` option, confidence labels, and mandatory human confirmation. Privacy of

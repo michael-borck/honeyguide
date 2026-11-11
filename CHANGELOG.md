@@ -44,6 +44,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   Outcomes and confirmations travel in the collection file. CLI:
   `suggest --outcomes outcomes.txt --collection` and
   `batch --outcomes outcomes.txt`.
+- Unit-outline parsing: paste a full outline; an "Outcomes" section is
+  detected, and week/module/assessment headings, list markers and LO/CLO codes
+  are ignored.
+- Optional one-line "why this outcome" reason per alignment from the local
+  LLM (capped, labelled generated, disabled with
+  `HONEYGUIDE_ALIGNMENT_REASONS=0`).
+- Hand-labelled alignment evaluation: `npm run eval:alignment` (25 resources;
+  84% accuracy, 94% precision, 79% recall, 100% abstention with
+  `tev1:0.8b`).
 - Optional semantic re-ranking (ADR-0015): local Ollama embeddings
   (`nomic-embed-text`) reorder candidates by relevance before diversity
   balancing, with an in-process embedding cache. Used as the fallback when no

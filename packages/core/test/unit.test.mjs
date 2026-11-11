@@ -45,6 +45,7 @@ import {
   parseOutcomes,
   buildAlignmentRequest,
   parseAlignmentResponse,
+  buildAlignmentReasonPrompt,
 } from '../dist/index.js';
 
 const resource = (over = {}) => ({
@@ -511,6 +512,52 @@ test('parseOutcomes strips list markers and numbers outcomes', () => {
   assert.equal(outcomes[1].text, 'Evaluate supply chain risk');
 });
 
+test('parseOutcomes extracts the outcomes section from a unit outline', () => {
+  const outline = `Week 1: Introduction
+Students will do the readings.
+Learning outcomes
+1. Explain spaced repetition and how to schedule review intervals.
+2. Describe retrieval practice and the testing effect.
+LO3: Evaluate the credibility of a study design.
+Assessment
+- Quiz 10%`;
+  assert.deepEqual(
+    parseOutcomes(outline).map((o) => o.text),
+    [
+      'Explain spaced repetition and how to schedule review intervals.',
+      'Describe retrieval practice and the testing effect.',
+      'Evaluate the credibility of a study design.',
+    ],
+  );
+});
+
+test('parseOutcomes handles a plain list without a heading', () => {
+  assert.deepEqual(
+    parseOutcomes(
+      '- Explain spaced repetition\n* Describe retrieval practice\n- Evaluate a study design',
+    ).map((o) => o.text),
+    [
+      'Explain spaced repetition',
+      'Describe retrieval practice',
+      'Evaluate a study design',
+    ],
+  );
+});
+
+test('buildAlignmentReasonPrompt includes the outcome and truncates the resource', () => {
+  const prompt = buildAlignmentReasonPrompt(
+    'study techniques',
+    'Explain spaced repetition',
+    resource({
+      title: 'A very long study',
+      annotation: { source: 'extracted', text: 'x'.repeat(2000) },
+    }),
+  );
+  assert.match(prompt, /Unit outcome: "Explain spaced repetition"/);
+  assert.match(prompt, /A very long study/);
+  assert.ok(prompt.length < 1200);
+});
+
 test('buildAlignmentRequest asks a Choice per resource over outcomes plus none', () => {
   const outcomes = parseOutcomes('Explain spaced repetition\nDescribe retrieval practice');
   const resources = [
@@ -597,6 +644,7 @@ test('exports include only confirmed outcome alignments', () => {
       score: 0.9,
       confidence: 'high',
       proposedBy: 'decision',
+      reason: 'Builds a review schedule.',
       confirmed: true,
     },
   });
@@ -613,9 +661,11 @@ test('exports include only confirmed outcome alignments', () => {
   });
   const md = toMarkdown('topic', { resources: [confirmed, proposed], componentHealth: {} });
   assert.match(md, /outcome: Explain spacing/);
+  assert.match(md, /Builds a review schedule/);
   assert.doesNotMatch(md, /outcome: Describe retrieval/);
   const html = toLmsHtml('topic', { resources: [confirmed, proposed], componentHealth: {} });
   assert.match(html, /outcome: Explain spacing/);
+  assert.match(html, /Builds a review schedule/);
   assert.doesNotMatch(html, /outcome: Describe retrieval/);
 });
 

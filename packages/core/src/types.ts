@@ -85,6 +85,8 @@ export interface Alignment {
   score: number;
   confidence: AlignmentConfidence;
   proposedBy: 'decision' | 'embeddings';
+  /** One-line "why this outcome" from the local LLM, when available. */
+  reason?: string;
   confirmed: boolean;
 }
 

@@ -59,6 +59,9 @@ function resourceBlock(r: Resource): string[] {
       r.annotation.source === 'llm' ? 'Rationale (generated)' : 'Description (extracted)';
     lines.push('', `${provenance}: ${r.annotation.text}`);
   }
+  if (r.alignment?.confirmed && r.alignment.reason) {
+    lines.push('', `Outcome rationale (generated): ${r.alignment.reason}`);
+  }
   return lines;
 }
 

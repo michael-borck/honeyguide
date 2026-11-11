@@ -38,6 +38,12 @@ export interface PipelineConfig {
   decisionUrl?: string;
   decisionModel?: string;
   decisionApiKey?: string;
+  /**
+   * Ask the local LLM for a one-line "why this outcome" reason per alignment.
+   * On by default when `ollamaUrl` is configured; set
+   * HONEYGUIDE_ALIGNMENT_REASONS=0 to disable.
+   */
+  alignmentReasons?: boolean;
   /** Contact email passed to polite-pool APIs (Crossref/OpenAlex). */
   mailto?: string;
   /**
@@ -66,6 +72,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PipelineCon
     decisionUrl: env.DECISION_URL || undefined,
     decisionModel: env.DECISION_MODEL || 'tev1:0.8b',
     decisionApiKey: env.DECISION_API_KEY || undefined,
+    alignmentReasons: env.HONEYGUIDE_ALIGNMENT_REASONS !== '0',
     mailto: env.HONEYGUIDE_MAILTO || undefined,
   };
 }

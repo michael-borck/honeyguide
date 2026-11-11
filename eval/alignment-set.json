@@ -1,0 +1,160 @@
+[
+  {
+    "name": "study techniques",
+    "topic": "evidence-based study techniques",
+    "outcomes": [
+      { "id": "o0", "text": "Explain spaced repetition and how to schedule review intervals." },
+      { "id": "o1", "text": "Describe retrieval practice and the testing effect." },
+      { "id": "o2", "text": "Evaluate the credibility of a study design." }
+    ],
+    "resources": [
+      {
+        "title": "Spaced Repetition Promotes Efficient and Effective Learning",
+        "description": "Scheduling review intervals to combat forgetting.",
+        "expected": "o0"
+      },
+      {
+        "title": "Optimizing Review Schedules for Long-Term Retention",
+        "description": "How the spacing gap affects durable memory.",
+        "expected": "o0"
+      },
+      {
+        "title": "The Testing Effect: Retrieval Practice Improves Retention",
+        "description": "Testing as a learning strategy rather than assessment.",
+        "expected": "o1"
+      },
+      {
+        "title": "Retrieval Practice Produces More Learning than Elaborative Studying",
+        "description": "Comparing quizzing with concept mapping.",
+        "expected": "o1"
+      },
+      {
+        "title": "Assessing Risk of Bias in Randomised Trials",
+        "description": "A checklist for judging internal validity.",
+        "expected": "o2"
+      },
+      {
+        "title": "How to Read a Meta-Analysis Critically",
+        "description": "Evaluating heterogeneity, publication bias and study quality.",
+        "expected": "o2"
+      },
+      {
+        "title": "Anki Flashcards for Medical Vocabulary",
+        "description": "Using spaced repetition software to review terminology.",
+        "expected": "o0"
+      },
+      {
+        "title": "Supply Chain Resilience in Manufacturing",
+        "description": "Buffer stock, supplier risk and disruption recovery.",
+        "expected": null
+      },
+      {
+        "title": "A History of the University Lecture",
+        "description": "The evolution of lecturing from the medieval university.",
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "formative assessment",
+    "topic": "formative assessment and feedback",
+    "outcomes": [
+      { "id": "o0", "text": "Design formative assessment tasks that surface student misconceptions." },
+      { "id": "o1", "text": "Give feedback that students can act on." },
+      { "id": "o2", "text": "Use assessment data to adapt teaching." }
+    ],
+    "resources": [
+      {
+        "title": "Embedded Formative Assessment",
+        "description": "Classroom techniques for eliciting evidence of understanding.",
+        "expected": "o0"
+      },
+      {
+        "title": "Designing Classroom Tasks to Elicit Misconceptions",
+        "description": "Question design that makes student thinking visible.",
+        "expected": "o0"
+      },
+      {
+        "title": "The Power of Feedback",
+        "description": "A model of feedback that improves learning.",
+        "expected": "o1"
+      },
+      {
+        "title": "Providing Actionable Feedback in Large Classes",
+        "description": "Practical feedback strategies that students can use.",
+        "expected": "o1"
+      },
+      {
+        "title": "Using Exit Tickets to Adjust Instruction",
+        "description": "Short end-of-class checks that inform the next lesson.",
+        "expected": "o2"
+      },
+      {
+        "title": "Data-Driven Instruction: From Assessment to Action",
+        "description": "Turning assessment results into teaching decisions.",
+        "expected": "o2"
+      },
+      {
+        "title": "Summative Grading Policies in Higher Education",
+        "description": "Curve fitting, grade appeals and transcript notation.",
+        "expected": null
+      },
+      {
+        "title": "Supply Chain Risk Management",
+        "description": "Supplier failure modes and mitigation.",
+        "expected": null
+      }
+    ]
+  },
+  {
+    "name": "supply chain resilience",
+    "topic": "supply chain resilience",
+    "outcomes": [
+      { "id": "o0", "text": "Explain sources of supply chain vulnerability." },
+      { "id": "o1", "text": "Evaluate resilience strategies such as redundancy and flexibility." },
+      { "id": "o2", "text": "Design a risk mitigation plan for a supplier network." }
+    ],
+    "resources": [
+      {
+        "title": "Sources of Supply Chain Vulnerability: A Literature Review",
+        "description": "Concentration, dependence and disruption exposure.",
+        "expected": "o0"
+      },
+      {
+        "title": "Understanding Supplier Concentration Risk",
+        "description": "Why single-source dependencies fail under stress.",
+        "expected": "o0"
+      },
+      {
+        "title": "Redundancy vs Flexibility in Supply Chain Resilience",
+        "description": "Comparing buffering and adaptive capacity.",
+        "expected": "o1"
+      },
+      {
+        "title": "Evaluating Buffering Strategies under Disruption",
+        "description": "Evidence on inventory and capacity buffers.",
+        "expected": "o1"
+      },
+      {
+        "title": "Designing Resilient Supplier Networks",
+        "description": "A practical framework for mitigation planning.",
+        "expected": "o2"
+      },
+      {
+        "title": "A Framework for Supply Chain Risk Mitigation",
+        "description": "Steps for building a supplier risk plan.",
+        "expected": "o2"
+      },
+      {
+        "title": "Spaced Repetition for Medical Students",
+        "description": "Review schedules for anatomy vocabulary.",
+        "expected": null
+      },
+      {
+        "title": "Growth Mindset Interventions in Schools",
+        "description": "Evidence on brief mindset programmes.",
+        "expected": null
+      }
+    ]
+  }
+]

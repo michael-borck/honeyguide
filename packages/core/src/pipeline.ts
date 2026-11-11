@@ -20,6 +20,7 @@ import { classifySource } from './enrich/sourceType.js';
 import { fetchPageMeta } from './enrich/page.js';
 import { lookupUnpaywall } from './enrich/unpaywall.js';
 import { createOutcomeAligner } from './align/outcomes.js';
+import { addAlignmentReasons } from './align/reasons.js';
 import { annotate } from './annotate/ladder.js';
 import { diversify } from './rank/diversity.js';
 import { createReranker } from './rank/reranker.js';
@@ -122,6 +123,7 @@ export async function suggestResources(
         for (const resource of resources) {
           resource.alignment = alignments.get(resource) ?? null;
         }
+        await addAlignmentReasons(resources, topic, config);
         health.alignment = resources.some((resource) => resource.alignment)
           ? 'ok'
           : 'degraded';
