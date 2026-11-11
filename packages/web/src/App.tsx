@@ -1,4 +1,11 @@
-import { useEffect, useMemo, useState } from 'react';
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type ReactNode,
+} from 'react';
 
 interface Annotation {
   source: 'llm' | 'extracted' | 'none';
@@ -57,6 +64,65 @@ interface Health {
   sources?: Record<string, string | string[]>;
 }
 
+type ProgressStage =
+  | 'query'
+  | 'retrieve'
+  | 'verify'
+  | 'rank'
+  | 'annotate'
+  | 'align'
+  | 'done';
+
+interface ProgressEvent {
+  stage: ProgressStage;
+  detail?: string;
+  current?: number;
+  total?: number;
+}
+
+const STAGE_PERCENT: Record<ProgressStage, number> = {
+  query: 8,
+  retrieve: 28,
+  verify: 46,
+  rank: 62,
+  annotate: 82,
+  align: 92,
+  done: 100,
+};
+
+function progressLabel(event: ProgressEvent | null): string {
+  if (!event) return 'Working…';
+  switch (event.stage) {
+    case 'query':
+      return 'Understanding the input…';
+    case 'retrieve':
+      return event.detail
+        ? `Retrieving ${event.detail.toLowerCase()}…`
+        : 'Retrieving sources…';
+    case 'verify':
+      return 'Verifying links…';
+    case 'rank':
+      return 'Ranking and diversifying…';
+    case 'annotate':
+      return event.total
+        ? `Annotating ${event.current ?? 0} of ${event.total}…`
+        : 'Annotating…';
+    case 'align':
+      return 'Matching unit outcomes…';
+    case 'done':
+      return 'Done';
+  }
+}
+
+function progressPercent(event: ProgressEvent | null): number {
+  if (!event) return 12;
+  if (event.stage === 'annotate' && event.total) {
+    const ratio = Math.max(0, Math.min(1, (event.current ?? 0) / event.total));
+    return 62 + (90 - 62) * ratio;
+  }
+  return STAGE_PERCENT[event.stage] ?? 12;
+}
+
 /** Portable collection file, shared with the CLI and desktop (ADR-0014). */
 const COLLECTION_KIND = 'honeyguide-collection';
 const COLLECTION_SCHEMA_VERSION = 1;
@@ -72,6 +138,26 @@ interface CollectionFile {
 }
 
 const OUTCOMES_KEY = 'honeyguide-outcomes';
+const THEME_KEY = 'honeyguide-theme';
+
+type ThemeMode = 'light' | 'dark' | 'system';
+
+function loadTheme(): ThemeMode {
+  try {
+    const stored = localStorage.getItem(THEME_KEY);
+    if (stored === 'light' || stored === 'dark' || stored === 'system') return stored;
+  } catch {
+    // ignore
+  }
+  return 'system';
+}
+
+function resolvedTheme(mode: ThemeMode): 'light' | 'dark' {
+  if (mode === 'system') {
+    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+  }
+  return mode;
+}
 
 const OUTCOMES_HEADING =
   /^(?:(?:learning|intended|course|unit|subject|module|program|programme|graduate)\s+)*outcomes?$|^(?:ilos?|clos?|ulos?|slos?)$/i;
@@ -337,11 +423,11 @@ function loadSettings(): Settings {
 }
 
 const VERIFY_COLOR: Record<string, string> = {
-  verified: '#1a7f4e',
-  blocked: '#a06a00',
-  paywalled: '#a06a00',
-  dead: '#b3261e',
-  unverified: '#666',
+  verified: '#2f9e6e',
+  blocked: '#b07a16',
+  paywalled: '#b07a16',
+  dead: '#d24b42',
+  unverified: '#7a8499',
 };
 
 /**
@@ -383,6 +469,9 @@ export function App() {
   const outcomes = useMemo(() => parseOutcomes(outcomesText), [outcomesText]);
   const [brief, setBrief] = useState<BriefAnswers | null>(loadBrief);
   const [showInterview, setShowInterview] = useState(false);
+  const [theme, setTheme] = useState<ThemeMode>(loadTheme);
+  const [progress, setProgress] = useState<ProgressEvent | null>(null);
+  const [progressPct, setProgressPct] = useState(0);
   const compiledBrief = useMemo(() => (brief ? compileBrief(brief) : null), [brief]);
   const visibleResources = useMemo(
     () => (result ? applyFilters(result.resources, filters) : []),
@@ -434,6 +523,32 @@ export function App() {
       // storage unavailable; the brief still works for this session
     }
   }, [brief]);
+
+  useEffect(() => {
+    const apply = () => {
+      document.documentElement.dataset.theme = resolvedTheme(theme);
+    };
+    apply();
+    if (theme === 'system') {
+      const media = window.matchMedia('(prefers-color-scheme: dark)');
+      media.addEventListener('change', apply);
+      return () => media.removeEventListener('change', apply);
+    }
+  }, [theme]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(THEME_KEY, theme);
+    } catch {
+      // ignore
+    }
+  }, [theme]);
+
+  function cycleTheme() {
+    setTheme((current) =>
+      current === 'light' ? 'dark' : current === 'dark' ? 'system' : 'light',
+    );
+  }
 
   function saveSettings(next: Settings) {
     setSettings(next);
@@ -530,11 +645,71 @@ export function App() {
     }
   }
 
+  async function streamSuggest(payload: Record<string, unknown>): Promise<SuggestResult> {
+    const res = await fetch('/api/suggest/stream', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify(payload),
+    });
+    if (!res.ok || !res.body) throw new Error(`HTTP ${res.status}`);
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    let result: SuggestResult | null = null;
+
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      let boundary = buffer.indexOf('\n\n');
+      while (boundary !== -1) {
+        const chunk = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        let event = 'message';
+        let data = '';
+        for (const line of chunk.split('\n')) {
+          if (line.startsWith('event:')) event = line.slice(6).trim();
+          else if (line.startsWith('data:')) data += line.slice(5).trim();
+        }
+        if (data) {
+          const parsed = JSON.parse(data) as
+            | ProgressEvent
+            | SuggestResult
+            | { error?: string };
+          if (event === 'progress') {
+            const next = parsed as ProgressEvent;
+            setProgress((previous) => {
+              const current =
+                next.stage === 'annotate' && previous?.stage === 'annotate'
+                  ? Math.max(previous.current ?? 0, next.current ?? 0)
+                  : next.current;
+              return { ...next, current };
+            });
+            setProgressPct((previous) => Math.max(previous, progressPercent(next)));
+          } else if (event === 'result') {
+            result = parsed as SuggestResult;
+            setProgressPct(100);
+          } else if (event === 'error') {
+            throw new Error((parsed as { error?: string }).error ?? 'Streaming failed');
+          }
+        }
+        boundary = buffer.indexOf('\n\n');
+      }
+    }
+
+    if (!result) throw new Error('Streaming returned no result');
+    return result;
+  }
+
   async function run() {
     const single = doc ? doc.text : topic.trim();
     if (loading || (!single && !batchMode)) return;
     setLoading(true);
     setError(null);
+    setProgress(null);
+    setProgressPct(0);
     try {
       if (batchMode && !doc) {
         const topics = topicsFromInput();
@@ -550,13 +725,26 @@ export function App() {
         setRecheckEntries(null);
         setCollectionLabel(null);
       } else {
-        const res = await fetch('/api/suggest', {
-          method: 'POST',
-          headers: { 'content-type': 'application/json' },
-          body: JSON.stringify({ input: single, ...credentialFields() }),
-        });
-        if (!res.ok) throw new Error((await res.json()).error ?? `HTTP ${res.status}`);
-        setResult(await res.json());
+        const payload = { input: single, ...credentialFields() };
+        let next: SuggestResult | null = null;
+        if (health?.capabilities?.streaming) {
+          setProgress({ stage: 'query' });
+          try {
+            next = await streamSuggest(payload);
+          } catch {
+            next = null;
+          }
+        }
+        if (!next) {
+          const res = await fetch('/api/suggest', {
+            method: 'POST',
+            headers: { 'content-type': 'application/json' },
+            body: JSON.stringify(payload),
+          });
+          if (!res.ok) throw new Error((await res.json()).error ?? `HTTP ${res.status}`);
+          next = await res.json();
+        }
+        setResult(next);
         setBatchResult(null);
         setRecheckEntries(null);
         setCollectionLabel(null);
@@ -567,6 +755,8 @@ export function App() {
       setBatchResult(null);
     } finally {
       setLoading(false);
+      setProgress(null);
+      setProgressPct(0);
     }
   }
 
@@ -700,34 +890,49 @@ export function App() {
     <main className="hg-app">
       <header className="hg-header">
         <h1 className="hg-brand">🪶 Honeyguide</h1>
-        <button
-          onClick={() => setShowSettings((s) => !s)}
-          className="hg-btn hg-btn-ghost hg-btn-small"
-          aria-expanded={showSettings}
-        >
-          ⚙ Settings
-        </button>
+        <div className="hg-header-actions">
+          <button
+            onClick={cycleTheme}
+            className="hg-btn hg-btn-ghost hg-btn-small"
+            title={`Theme: ${theme}`}
+            aria-label={`Theme: ${theme}. Click to change.`}
+          >
+            {theme === 'dark' ? '🌙' : theme === 'light' ? '☀️' : '🖥'}
+            <span className="hg-theme-label">{theme}</span>
+          </button>
+          <button
+            onClick={() => setShowSettings((s) => !s)}
+            className="hg-btn hg-btn-ghost hg-btn-small"
+            aria-expanded={showSettings}
+          >
+            ⚙ Settings
+          </button>
+        </div>
       </header>
       <p className="hg-tagline">
         Verified supporting resources for your teaching — every link checked, nothing generated.
       </p>
 
       {showSettings && (
-        <SettingsPanel
-          settings={settings}
-          detected={detectedModels}
-          onDetected={setDetectedModels}
-          onSave={saveSettings}
-          onClose={() => setShowSettings(false)}
-        />
+        <Modal title="Settings" onClose={() => setShowSettings(false)}>
+          <SettingsPanel
+            settings={settings}
+            detected={detectedModels}
+            onDetected={setDetectedModels}
+            onSave={saveSettings}
+            onClose={() => setShowSettings(false)}
+          />
+        </Modal>
       )}
 
       {showInterview && (
-        <InterviewPanel
-          initial={brief}
-          onApply={(answers) => setBrief(answers)}
-          onClose={() => setShowInterview(false)}
-        />
+        <Modal title="Interview" onClose={() => setShowInterview(false)}>
+          <InterviewPanel
+            initial={brief}
+            onApply={(answers) => setBrief(answers)}
+            onClose={() => setShowInterview(false)}
+          />
+        </Modal>
       )}
 
       <div className="hg-search">
@@ -867,10 +1072,18 @@ export function App() {
           </p>
         )}
         {loading && (
-          <p role="status" className="hg-loading">
-            <span className="hg-spinner" aria-hidden="true" />
-            Retrieving, verifying and annotating — this can take a moment…
-          </p>
+          <div className="hg-progress" role="status">
+            <div className="hg-progress-label">
+              <span className="hg-spinner" aria-hidden="true" />
+              {progressLabel(progress)}
+            </div>
+            <div className="hg-progress-track">
+              <div
+                className={`hg-progress-fill ${progress ? '' : 'is-indeterminate'}`}
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
         )}
       </div>
 
@@ -1128,20 +1341,20 @@ function ResourceCard({
           {r.title}
         </a>
         <div className="hg-card-meta">
-          {r.stance === 'counterpoint' && <Badge text="⚖ counterpoint" color="#6a3fb2" />}
+          {r.stance === 'counterpoint' && <Badge text="⚖ counterpoint" color="#7b5cc7" />}
           <Badge text={r.format} />
           <Badge text={r.sourceType} />
           <Badge text={verificationLabel(r)} color={VERIFY_COLOR[r.verification]} />
-          {r.access === 'open' && <Badge text="open access" color="#1a7f4e" />}
-          {r.access === 'subscription' && <Badge text="subscription" color="#a06a00" />}
+          {r.access === 'open' && <Badge text="open access" color="#2f9e6e" />}
+          {r.access === 'subscription' && <Badge text="subscription" color="#b07a16" />}
           {r.licensing !== 'unknown' && (
-            <Badge text={r.licensing.replace(/-/g, ' ')} color="#2e6f40" />
+            <Badge text={r.licensing.replace(/-/g, ' ')} color="#2f8a5a" />
           )}
           {r.accessibilityNotes.map((note) => (
-            <Badge key={note} text={`♿ ${note}`} color="#376a9e" />
+            <Badge key={note} text={`♿ ${note}`} color="#4a82c0" />
           ))}
           {r.commerciallyInterested && (
-            <Badge text="⚠ commercially interested" color="#a06a00" />
+            <Badge text="⚠ commercially interested" color="#b07a16" />
           )}
           {r.year && <span>{r.year}</span>}
           {r.authors.length > 0 && <span>{r.authors.slice(0, 3).join(', ')}</span>}
@@ -1163,10 +1376,10 @@ function ResourceCard({
               text={`outcome · ${r.alignment.confidence}`}
               color={
                 r.alignment.confidence === 'high'
-                  ? '#1a7f4e'
+                  ? '#2f9e6e'
                   : r.alignment.confidence === 'medium'
-                    ? '#a06a00'
-                    : '#666'
+                    ? '#b07a16'
+                    : '#7a8499'
               }
             />
             <span className="hg-alignment-text">{r.alignment.outcomeText}</span>
@@ -1248,6 +1461,96 @@ function Footers({
   );
 }
 
+function Modal({
+  title,
+  onClose,
+  children,
+}: {
+  title: string;
+  onClose: () => void;
+  children: ReactNode;
+}) {
+  const dialogRef = useRef<HTMLDivElement>(null);
+  const titleId = useId();
+  const onCloseRef = useRef(onClose);
+
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  }, [onClose]);
+
+  useEffect(() => {
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const dialog = dialogRef.current;
+    if (!dialog) return;
+
+    const focusable = () =>
+      Array.from(
+        dialog.querySelectorAll<HTMLElement>(
+          'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+        ),
+      ).filter((el) => el.offsetParent !== null);
+
+    (focusable()[0] ?? dialog).focus();
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        event.preventDefault();
+        onCloseRef.current();
+        return;
+      }
+      if (event.key !== 'Tab') return;
+      const items = focusable();
+      if (!items.length) return;
+      const first = items[0];
+      const last = items[items.length - 1];
+      if (event.shiftKey && document.activeElement === first) {
+        event.preventDefault();
+        last.focus();
+      } else if (!event.shiftKey && document.activeElement === last) {
+        event.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener('keydown', onKeyDown);
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => {
+      document.removeEventListener('keydown', onKeyDown);
+      document.body.style.overflow = previousOverflow;
+      previouslyFocused?.focus?.();
+    };
+  }, []);
+
+  return (
+    <div
+      className="hg-modal-backdrop"
+      onMouseDown={(event) => {
+        if (event.target === event.currentTarget) onClose();
+      }}
+    >
+      <div
+        ref={dialogRef}
+        className="hg-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby={titleId}
+        tabIndex={-1}
+      >
+        <div className="hg-modal-header">
+          <h2 id={titleId} className="hg-panel-title">
+            {title}
+          </h2>
+          <button className="hg-modal-close" onClick={onClose} aria-label="Close">
+            ✕
+          </button>
+        </div>
+        <div className="hg-modal-body">{children}</div>
+      </div>
+    </div>
+  );
+}
+
 function InterviewPanel({
   initial,
   onApply,
@@ -1272,8 +1575,7 @@ function InterviewPanel({
   );
 
   return (
-    <section className="hg-panel hg-form">
-      <h2 className="hg-panel-title">Interview</h2>
+    <div className="hg-form">
       <p className="hg-help">
         Four quick questions. The brief shapes stance, filters and how rationales are framed;
         retrieval stays the same.
@@ -1381,7 +1683,7 @@ function InterviewPanel({
           Skip
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 
@@ -1461,8 +1763,7 @@ function SettingsPanel({
   }
 
   return (
-    <section className="hg-panel hg-form">
-      <h2 className="hg-panel-title">Settings</h2>
+    <div className="hg-form">
       <p className="hg-help">
         Keys are stored in this browser only and sent per request — never saved on the server.
       </p>
@@ -1641,11 +1942,11 @@ function SettingsPanel({
           Cancel
         </button>
       </div>
-    </section>
+    </div>
   );
 }
 
-function Badge({ text, color = '#4054b2' }: { text: string; color?: string }) {
+function Badge({ text, color = '#4a6cc9' }: { text: string; color?: string }) {
   return (
     <span
       className="hg-badge"

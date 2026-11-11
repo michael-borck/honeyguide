@@ -3,6 +3,7 @@ import {
   suggestResources,
   type Outcome,
   type PipelineConfig,
+  type ProgressListener,
   type SearchConstraints,
   type SuggestResult,
 } from '@michaelborck/honeyguide-core';
@@ -37,7 +38,12 @@ const JOB_TIMEOUT_MS = 360_000;
 
 export interface SuggestRunner {
   available: boolean;
-  run(job: SuggestJob, config: PipelineConfig, byok: boolean): Promise<SuggestResult>;
+  run(
+    job: SuggestJob,
+    config: PipelineConfig,
+    byok: boolean,
+    onProgress?: ProgressListener,
+  ): Promise<SuggestResult>;
 }
 
 export async function createRunner(
@@ -45,7 +51,11 @@ export async function createRunner(
   defaults: PipelineConfig,
   concurrency: number,
 ): Promise<SuggestRunner> {
-  const inline = (job: SuggestJob, config: PipelineConfig) =>
+  const inline = (
+    job: SuggestJob,
+    config: PipelineConfig,
+    onProgress?: ProgressListener,
+  ) =>
     suggestResources(
       {
         input: job.input,
@@ -56,6 +66,7 @@ export async function createRunner(
         context: job.context,
       },
       config,
+      onProgress,
     );
 
   let queue: Queue<SuggestJob> | null = null;
@@ -90,8 +101,8 @@ export async function createRunner(
 
   return {
     available: queue !== null,
-    async run(job, config, byok) {
-      if (!queue || !events || byok) return inline(job, config);
+    async run(job, config, byok, onProgress) {
+      if (!queue || !events || byok) return inline(job, config, onProgress);
       const queued = await queue.add('suggest', job, {
         removeOnComplete: true,
         removeOnFail: true,

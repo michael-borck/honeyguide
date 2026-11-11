@@ -1,7 +1,7 @@
 import path from 'node:path';
 import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
-import { configFromEnv } from '@michaelborck/honeyguide-core';
+import { configFromEnv, suggestResources } from '@michaelborck/honeyguide-core';
 import { loadConfig } from './config.js';
 import { createRunner } from './queue.js';
 import { createApp } from './app.js';
@@ -35,7 +35,11 @@ function packageVersion(): string {
 
 const app = createApp({
   pipelineDefaults,
-  run: (job, cfg, byok) => runner.run(job, cfg, byok),
+  run: (job, cfg, byok, onProgress) => runner.run(job, cfg, byok, onProgress),
+  runStream:
+    !runner.available || process.env.HONEYGUIDE_ALLOW_STREAM === '1'
+      ? (job, cfg, onProgress) => suggestResources(job, cfg, onProgress)
+      : undefined,
   queueAvailable: runner.available,
   webDistPath,
   version: packageVersion(),

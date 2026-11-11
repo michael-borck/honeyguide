@@ -49,6 +49,7 @@ function startEmbeddedServer(): Promise<number> {
   const server = createApp({
     pipelineDefaults: configFromEnv(),
     run: (job, config) => suggestResources(job, config),
+    runStream: (job, config, onProgress) => suggestResources(job, config, onProgress),
     queueAvailable: false,
     webDistPath: path.join(dirname, 'web'),
     version: app.getVersion(),

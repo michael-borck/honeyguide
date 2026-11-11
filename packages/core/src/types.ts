@@ -146,6 +146,26 @@ export interface SuggestRequest {
 
 export type ComponentState = 'ok' | 'degraded' | 'unavailable';
 
+/** Stages reported by the pipeline while a suggestion is running. */
+export type PipelineStage =
+  | 'query'
+  | 'retrieve'
+  | 'verify'
+  | 'rank'
+  | 'annotate'
+  | 'align'
+  | 'done';
+
+export interface ProgressEvent {
+  stage: PipelineStage;
+  /** Optional detail, e.g. "counterpoints" or the resource being annotated. */
+  detail?: string;
+  current?: number;
+  total?: number;
+}
+
+export type ProgressListener = (event: ProgressEvent) => void;
+
 export interface SuggestResult {
   resources: Resource[];
   /** Health of each enrichment component for this request (ADR-0006). */

@@ -1,6 +1,7 @@
 import type {
   AccessStatus,
   ComponentState,
+  ProgressListener,
   Resource,
   Stance,
   SuggestRequest,
@@ -41,9 +42,11 @@ const ANNOTATE_CONCURRENCY = 3;
 export async function suggestResources(
   request: SuggestRequest,
   config: PipelineConfig = {},
+  onProgress?: ProgressListener,
 ): Promise<SuggestResult> {
   const input = request.input.trim();
   if (!input) return { resources: [], componentHealth: {} };
+  onProgress?.({ stage: 'query' });
   const maxResults = request.maxResults ?? DEFAULT_MAX_RESULTS;
   const health: Record<string, ComponentState> = {};
   const seenUrls = new Set<string>();
@@ -54,6 +57,7 @@ export async function suggestResources(
   const topic = await deriveQuery(input, config);
 
   // --- Retrieve, one component per source type -------------------------
+  onProgress?.({ stage: 'retrieve' });
   const webProvider = createSearchProvider(config);
   const reranker = createReranker(config);
   const paperOptions = {
@@ -92,6 +96,7 @@ export async function suggestResources(
   // --- Counterpoint pass (spec §3 point 3) -----------------------------
   if (request.counterpoint) {
     try {
+      onProgress?.({ stage: 'retrieve', detail: 'Counterpoints' });
       const queries = await deriveCounterQueries(topic, config);
       const counterSettled = await Promise.allSettled(
         queries.flatMap((q) => [
@@ -122,6 +127,7 @@ export async function suggestResources(
 
   // --- Optional outcome alignment (ADR-0017) ---------------------------
   if (request.outcomes?.length && resources.length) {
+    onProgress?.({ stage: 'align' });
     const aligner = createOutcomeAligner(config);
     if (!aligner) {
       health.alignment = 'unavailable';
@@ -155,6 +161,7 @@ export async function suggestResources(
         ? 'degraded'
         : 'unavailable';
 
+  onProgress?.({ stage: 'done' });
   return { resources, componentHealth: health };
 
   /** Verify, drop dead links, pick a diverse set, pair candidate+resource. */
@@ -163,6 +170,7 @@ export async function suggestResources(
     count: number,
     stance: Stance,
   ): Promise<Array<{ candidate: Candidate; resource: Resource }>> {
+    onProgress?.({ stage: 'verify' });
     const verified = new Map<Candidate, VerificationOutcome>();
     await Promise.all(
       pool.map(async (c) => {
@@ -186,6 +194,7 @@ export async function suggestResources(
       }
     }
 
+    onProgress?.({ stage: 'rank' });
     const preliminary = ranked.map((c) =>
       toResource(c, verified.get(c) ?? { status: 'unverified', basis: 'none' }, stance),
     );
@@ -204,7 +213,13 @@ export async function suggestResources(
     s: typeof stats,
   ): Promise<void> {
     s.enriched += pairs.length;
-    await mapLimit(pairs, ANNOTATE_CONCURRENCY, async ({ candidate, resource }) => {
+    onProgress?.({
+      stage: 'annotate',
+      detail: 'Rationales',
+      current: 0,
+      total: pairs.length,
+    });
+    await mapLimit(pairs, ANNOTATE_CONCURRENCY, async ({ candidate, resource }, index) => {
       if ((!candidate.thumbnailUrl || !candidate.description) && !candidate.doi) {
         try {
           const meta = await fetchPageMeta(candidate.url);
@@ -249,6 +264,12 @@ export async function suggestResources(
         request.context,
       );
       if (resource.annotation.source === 'llm') s.llmSuccesses += 1;
+      onProgress?.({
+        stage: 'annotate',
+        detail: 'Rationales',
+        current: index + 1,
+        total: pairs.length,
+      });
     });
   }
 }

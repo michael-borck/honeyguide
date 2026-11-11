@@ -13,6 +13,7 @@ import {
   createSearchProvider,
   type Outcome,
   type PipelineConfig,
+  type ProgressListener,
   type SearchConstraints,
   type SuggestResult,
 } from '@michaelborck/honeyguide-core';
@@ -35,6 +36,20 @@ export interface AppOptions {
     },
     config: PipelineConfig,
     byok: boolean,
+    onProgress?: ProgressListener,
+  ) => Promise<SuggestResult>;
+  /** Inline streaming runner (no queue); enables `/api/suggest/stream`. */
+  runStream?: (
+    job: {
+      input: string;
+      maxResults: number;
+      counterpoint?: boolean;
+      outcomes?: Outcome[];
+      constraints?: SearchConstraints;
+      context?: string;
+    },
+    config: PipelineConfig,
+    onProgress: ProgressListener,
   ) => Promise<SuggestResult>;
   queueAvailable: boolean;
   webDistPath: string;
@@ -88,6 +103,7 @@ export function createApp(options: AppOptions): express.Express {
       capabilities: {
         batch: Boolean(options.allowBatch),
         screenshots: Boolean(options.screenshot),
+        streaming: Boolean(options.runStream),
       },
       // Which retrieval sources this instance will actually try (ADR-0013).
       sources: {
@@ -197,6 +213,53 @@ export function createApp(options: AppOptions): express.Express {
       res.status(500).json({
         error: error instanceof Error ? error.message : 'Unknown error',
       });
+    }
+  });
+
+  // Streaming suggest for local/self-host installs: same inputs as
+  // /api/suggest, with progress events followed by the final result.
+  app.post('/api/suggest/stream', async (req, res) => {
+    const runStream = options.runStream;
+    if (!runStream) {
+      res.status(501).json({ error: 'Streaming is not enabled on this instance.' });
+      return;
+    }
+    const body = req.body as SuggestBody;
+    const input = body.input?.trim();
+    if (!input) {
+      res.status(400).json({ error: 'input is required' });
+      return;
+    }
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache, no-transform');
+    res.setHeader('Connection', 'keep-alive');
+    res.setHeader('X-Accel-Buffering', 'no');
+    (res as unknown as { flushHeaders?: () => void }).flushHeaders?.();
+
+    const send = (event: string, data: unknown) => {
+      res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
+    };
+    const { pipelineConfig } = mergeConfig(body);
+    try {
+      const result = await runStream(
+        {
+          input,
+          maxResults: clamp(body.maxResults ?? 10, 1, 25),
+          counterpoint: Boolean(body.counterpoint),
+          outcomes: body.outcomes,
+          constraints: body.constraints,
+          context: body.context,
+        },
+        pipelineConfig,
+        (event) => send('progress', event),
+      );
+      send('result', result);
+      res.end();
+    } catch (error) {
+      send('error', {
+        error: error instanceof Error ? error.message : 'Unknown error',
+      });
+      res.end();
     }
   });
 

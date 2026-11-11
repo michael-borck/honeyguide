@@ -6,6 +6,18 @@
     <meta name="theme-color" content="#4054b2" />
     <link rel="manifest" href="/manifest.webmanifest" />
     <link rel="icon" href="/icon.svg" type="image/svg+xml" />
+    <script>
+      (function () {
+        try {
+          var mode = localStorage.getItem('honeyguide-theme') || 'system';
+          var dark =
+            mode === 'dark' ||
+            (mode === 'system' &&
+              window.matchMedia('(prefers-color-scheme: dark)').matches);
+          document.documentElement.dataset.theme = dark ? 'dark' : 'light';
+        } catch (e) {}
+      })();
+    </script>
     <title>Honeyguide</title>
   </head>
   <body>

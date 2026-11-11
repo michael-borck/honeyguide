@@ -82,6 +82,18 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
   card-based results layout with clearer hierarchy, a responsive shell,
   consistent panels, and improved focus, empty and loading states.
 
+### Added
+
+- Dark mode: a light/dark/system theme toggle in the header, persisted and
+  defaulting to the OS preference; the dark palette matches the landing page.
+- Focus-trapped Settings and Interview dialogs: backdrop, Escape to close,
+  Tab/Shift+Tab cycling, focus restore and body scroll lock.
+- Per-stage progress: the pipeline emits `query → retrieve → verify → rank →
+  annotate → align → done` events, streamed over `POST /api/suggest/stream`
+  (SSE) and shown as a labelled progress bar. Streaming is automatic for the
+  inline desktop/self-host path; `HONEYGUIDE_ALLOW_STREAM=1` enables it when
+  Redis/queue is present. Non-streaming paths keep an indeterminate bar.
+
 ### Fixed
 
 - CLI `--version` reported a hardcoded `0.1.1`; it now reads the package
