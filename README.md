@@ -24,6 +24,7 @@ retrieval:
 | **Institutional plumbing** | Licensing status (OER, Creative Commons, library-subscription, link-only), library permalinks, accessibility notes (captions, transcripts, tagged PDFs), LMS-ready export. | Links only; the lecturer does the licensing and accessibility legwork. |
 | **Pedagogical framing** | A rationale per suggestion (why this one, what it adds, what it doesn't cover), source-type labels (peer-reviewed / practitioner / vendor / journalism / government), a *commercially-interested* flag on consultant material, and (v2) a counterpoint mode that deliberately surfaces disagreeing material. | Relevance-ranked lists with no teaching rationale. |
 | **Outcome alignment** | Optionally match each resource to your unit outcomes with a local decision model; you confirm the matches, and only confirmed tags appear in exports. | No notion of your learning outcomes. |
+| **Guided interview** | An optional four-question brief (support/challenge, prior knowledge, timing, constraints) shapes stance, filtering and rationale framing — no chatbot. | A single topic box. |
 | **Deliberate diversity** | Balances format and voice by default — one video, one paper, one practitioner piece, an explicit pass for non-Anglo sources — so the retrieval layer's biases don't become the reading list's biases. | Whatever ranks highest, which is often five similar blog posts. |
 | **Deployment freedom** | Hosted, self-hosted Docker, desktop app, CLI, npm library. Local LLM via Ollama — your content never has to leave your machine. | Hosted SaaS only. |
 

@@ -20,6 +20,7 @@ import { classifySource } from './enrich/sourceType.js';
 import { fetchPageMeta } from './enrich/page.js';
 import { lookupUnpaywall } from './enrich/unpaywall.js';
 import { createOutcomeAligner } from './align/outcomes.js';
+import { applyConstraints } from './brief.js';
 import { addAlignmentReasons } from './align/reasons.js';
 import { annotate } from './annotate/ladder.js';
 import { diversify } from './rank/diversity.js';
@@ -80,7 +81,11 @@ export async function suggestResources(
     }
   });
 
-  const selected = await selectUsable(candidates, maxResults, 'supporting');
+  const selected = await selectUsable(
+    applyConstraints(candidates, request.constraints),
+    maxResults,
+    'supporting',
+  );
   await enrichAll(selected, topic, config, stats);
   const resources = selected.map(({ resource }) => resource);
 
@@ -94,9 +99,12 @@ export async function suggestResources(
           ...(webProvider ? [retrieveWeb(q, webProvider)] : []),
         ]),
       );
-      const counterCandidates = dedupeAgainst(
-        seenUrls,
-        counterSettled.flatMap((o) => (o.status === 'fulfilled' ? o.value : [])),
+      const counterCandidates = applyConstraints(
+        dedupeAgainst(
+          seenUrls,
+          counterSettled.flatMap((o) => (o.status === 'fulfilled' ? o.value : [])),
+        ),
+        request.constraints,
       );
       const counterCount = Math.max(2, Math.floor(maxResults / 3));
       const counterSelected = await selectUsable(
@@ -238,6 +246,7 @@ export async function suggestResources(
         cfg,
         true,
         resource.stance,
+        request.context,
       );
       if (resource.annotation.source === 'llm') s.llmSuccesses += 1;
     });

@@ -4,19 +4,13 @@ import type { PipelineConfig } from '../config.js';
 const GENERATE_TIMEOUT_MS = 30_000;
 const DEFAULT_MODEL = 'llama3.1:8b';
 
-/**
- * Generate a one-to-two sentence relational rationale (ADR-0011 rung 1).
- * Prompt is sized for 4B–8B models (spec §8): short, concrete, no format
- * tricks. The LLM only writes ABOUT a resource retrieval already found —
- * it can never introduce one.
- */
-export async function generateRationale(
+/** The rationale prompt, including optional teaching context (ADR-0018). */
+export function buildRationalePrompt(
   topic: string,
   candidate: Candidate,
-  config: PipelineConfig,
   stance: 'supporting' | 'counterpoint' = 'supporting',
-): Promise<string> {
-  if (!config.ollamaUrl) throw new Error('no Ollama configured');
+  context?: string,
+): string {
   const meta = [
     `Title: ${candidate.title}`,
     candidate.authors.length ? `By: ${candidate.authors.slice(0, 3).join(', ')}` : null,
@@ -34,12 +28,31 @@ export async function generateRationale(
         `and why showing students a counterpoint here could be valuable.`
       : `In one or two sentences, say why this resource could support that teaching, ` +
         `what it adds, and (if apparent) what it does not cover.`;
-  const prompt =
+  return (
+    (context ? `Teaching context: ${context.slice(0, 400)}\n\n` : '') +
     `A lecturer is teaching: "${topic.slice(0, 300)}"\n\n` +
     `Candidate ${stance === 'counterpoint' ? 'counterpoint' : 'supporting'} resource:\n${meta}\n\n` +
     `${ask} ` +
     `Be concrete and honest; do not invent details not present above. ` +
-    `Reply with the sentences only.`;
+    `Reply with the sentences only.`
+  );
+}
+
+/**
+ * Generate a one-to-two sentence relational rationale (ADR-0011 rung 1).
+ * Prompt is sized for 4B–8B models (spec §8): short, concrete, no format
+ * tricks. The LLM only writes ABOUT a resource retrieval already found —
+ * it can never introduce one.
+ */
+export async function generateRationale(
+  topic: string,
+  candidate: Candidate,
+  config: PipelineConfig,
+  stance: 'supporting' | 'counterpoint' = 'supporting',
+  context?: string,
+): Promise<string> {
+  if (!config.ollamaUrl) throw new Error('no Ollama configured');
+  const prompt = buildRationalePrompt(topic, candidate, stance, context);
 
   const res = await fetch(`${config.ollamaUrl.replace(/\/$/, '')}/api/generate`, {
     method: 'POST',

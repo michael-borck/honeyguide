@@ -13,6 +13,7 @@ import {
   createSearchProvider,
   type Outcome,
   type PipelineConfig,
+  type SearchConstraints,
   type SuggestResult,
 } from '@michaelborck/honeyguide-core';
 
@@ -29,6 +30,8 @@ export interface AppOptions {
       maxResults: number;
       counterpoint?: boolean;
       outcomes?: Outcome[];
+      constraints?: SearchConstraints;
+      context?: string;
     },
     config: PipelineConfig,
     byok: boolean,
@@ -60,6 +63,9 @@ interface SuggestBody {
   decision?: { url?: string; model?: string };
   /** Optional unit outcomes; when present the pipeline proposes alignments. */
   outcomes?: Outcome[];
+  /** Interview brief constraints and teaching context (ADR-0018). */
+  constraints?: SearchConstraints;
+  context?: string;
   counterpoint?: boolean;
 }
 
@@ -166,6 +172,8 @@ export function createApp(options: AppOptions): express.Express {
           maxResults: clamp(body.maxResults ?? 10, 1, 25),
           counterpoint: Boolean(body.counterpoint),
           outcomes: body.outcomes,
+          constraints: body.constraints,
+          context: body.context,
         },
         pipelineConfig,
         byok,
@@ -216,6 +224,8 @@ export function createApp(options: AppOptions): express.Express {
         maxResults: clamp(body.maxResults ?? 10, 1, 25),
         counterpoint: Boolean(body.counterpoint),
         outcomes: body.outcomes,
+        constraints: body.constraints,
+        context: body.context,
       });
       if (body.format === 'markdown') {
         res.type('text/markdown').send(toBatchMarkdown(entries));

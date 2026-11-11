@@ -46,6 +46,9 @@ import {
   buildAlignmentRequest,
   parseAlignmentResponse,
   buildAlignmentReasonPrompt,
+  compileBrief,
+  applyConstraints,
+  buildRationalePrompt,
 } from '../dist/index.js';
 
 const resource = (over = {}) => ({
@@ -499,6 +502,75 @@ test('JSON cache respects its TTL and can be cleared', () => {
   assert.equal(getCachedJson('k', 2500, 1000), undefined);
   clearJsonCache();
   assert.equal(getCachedJson('k', 1500, 1000), undefined);
+});
+
+test('compileBrief maps the four interview answers', () => {
+  const compiled = compileBrief(
+    {
+      stance: 'challenge',
+      priorKnowledge: 'reading',
+      priorNote: 'They read the introductory chapter.',
+      timing: 'pre-class',
+      openAccessOnly: true,
+      noVideo: true,
+      recentOnly: true,
+    },
+    2026,
+  );
+  assert.equal(compiled.counterpoint, true);
+  assert.deepEqual(compiled.constraints, {
+    openAccessOnly: true,
+    excludeFormats: ['video'],
+    minYear: 2021,
+  });
+  assert.match(compiled.context, /already done a reading/);
+  assert.match(compiled.context, /preparation before class/);
+  assert.match(compiled.context, /challenge the current framing/);
+});
+
+test('compileBrief support stance disables counterpoint and constraints', () => {
+  const compiled = compileBrief(
+    { stance: 'support', priorKnowledge: 'none', timing: 'in-class' },
+    2026,
+  );
+  assert.equal(compiled.counterpoint, false);
+  assert.deepEqual(compiled.constraints, {});
+});
+
+test('applyConstraints drops excluded formats, old years and known subscriptions', () => {
+  const open = paperCandidate({
+    title: 'OA',
+    format: 'paper',
+    year: 2024,
+    licensing: 'creative-commons',
+  });
+  const subscription = paperCandidate({
+    title: 'Sub',
+    format: 'paper',
+    year: 2024,
+    licensing: 'library-subscription',
+  });
+  const video = paperCandidate({ title: 'Vid', format: 'video', year: 2010 });
+  const book = paperCandidate({ title: 'Book', format: 'book', year: null });
+  const out = applyConstraints([open, subscription, video, book], {
+    openAccessOnly: true,
+    excludeFormats: ['video'],
+    minYear: 2020,
+  });
+  assert.deepEqual(
+    out.map((candidate) => candidate.title),
+    ['OA', 'Book'],
+  );
+});
+
+test('buildRationalePrompt includes the teaching context', () => {
+  const prompt = buildRationalePrompt(
+    'topic',
+    paperCandidate({ title: 'Paper' }),
+    'supporting',
+    'Students have already done a reading.',
+  );
+  assert.match(prompt, /Teaching context: Students have already done a reading/);
 });
 
 test('parseOutcomes strips list markers and numbers outcomes', () => {

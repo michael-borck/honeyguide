@@ -67,6 +67,7 @@ interface CollectionFile {
   topic: string;
   createdAt: string;
   outcomes?: Outcome[];
+  brief?: BriefAnswers;
   result: SuggestResult;
 }
 
@@ -125,6 +126,117 @@ function stripOutcomePrefix(line: string): string {
     .replace(/^students?\s+can\s+/i, '')
     .replace(/^be\s+able\s+to\s+/i, '')
     .trim();
+}
+
+/** The four-question interview brief (ADR-0018). */
+interface BriefAnswers {
+  stance: 'support' | 'challenge' | 'both';
+  priorKnowledge: 'none' | 'reading' | 'lecture' | 'notes';
+  priorNote: string;
+  timing: 'pre-class' | 'in-class' | 'post-class' | 'assessment';
+  openAccessOnly: boolean;
+  noVideo: boolean;
+  recentOnly: boolean;
+}
+
+interface SearchConstraints {
+  openAccessOnly?: boolean;
+  excludeFormats?: string[];
+  minYear?: number;
+}
+
+interface CompiledBrief {
+  counterpoint: boolean;
+  constraints: SearchConstraints;
+  context: string;
+}
+
+const BRIEF_KEY = 'honeyguide-brief';
+
+function defaultBrief(): BriefAnswers {
+  return {
+    stance: 'support',
+    priorKnowledge: 'none',
+    priorNote: '',
+    timing: 'pre-class',
+    openAccessOnly: false,
+    noVideo: false,
+    recentOnly: false,
+  };
+}
+
+function loadBrief(): BriefAnswers | null {
+  try {
+    const raw = localStorage.getItem(BRIEF_KEY);
+    if (!raw) return null;
+    const data = JSON.parse(raw) as Partial<BriefAnswers>;
+    return data && typeof data === 'object' ? { ...defaultBrief(), ...data } : null;
+  } catch {
+    return null;
+  }
+}
+
+function compileBrief(
+  answers: BriefAnswers,
+  currentYear = new Date().getFullYear(),
+): CompiledBrief {
+  const constraints: SearchConstraints = {};
+  if (answers.openAccessOnly) constraints.openAccessOnly = true;
+  if (answers.noVideo) constraints.excludeFormats = ['video'];
+  if (answers.recentOnly) constraints.minYear = currentYear - 5;
+
+  const prior = {
+    none: 'Students have not encountered this topic yet.',
+    reading: 'Students have already done a reading on this topic.',
+    lecture: 'Students have already had a lecture on this topic.',
+    notes: 'Students have their own notes on this topic.',
+  }[answers.priorKnowledge];
+  const timing = {
+    'pre-class': 'This list is preparation before class.',
+    'in-class': 'This list will be used during class.',
+    'post-class': 'This list follows a class, for consolidation.',
+    assessment: 'This list is for assessment preparation.',
+  }[answers.timing];
+  const stance = {
+    support: 'It should reinforce the current framing.',
+    challenge: 'It should challenge the current framing and surface disagreement.',
+    both: 'It should include both supporting material and counterpoints.',
+  }[answers.stance];
+  const note = answers.priorNote.trim();
+
+  return {
+    counterpoint: answers.stance !== 'support',
+    constraints,
+    context: [prior, note || null, timing, stance].filter(Boolean).join(' '),
+  };
+}
+
+function briefSummary(answers: BriefAnswers): string {
+  const stance = {
+    support: 'Support framing',
+    challenge: 'Challenge framing',
+    both: 'Support + counterpoints',
+  }[answers.stance];
+  const prior = {
+    none: 'no prior knowledge',
+    reading: 'has a reading',
+    lecture: 'has had a lecture',
+    notes: 'has notes',
+  }[answers.priorKnowledge];
+  const timing = {
+    'pre-class': 'before class',
+    'in-class': 'in class',
+    'post-class': 'after class',
+    assessment: 'for assessment',
+  }[answers.timing];
+  const constraints = [
+    answers.openAccessOnly && 'open access',
+    answers.noVideo && 'no video',
+    answers.recentOnly && 'recent only',
+  ]
+    .filter(Boolean)
+    .join(', ');
+  return `${stance} · ${prior} · ${timing}${constraints ? ` · ${constraints}` : ''}`;
 }
 
 interface RecheckEntry {
@@ -269,6 +381,9 @@ export function App() {
     () => localStorage.getItem(OUTCOMES_KEY) ?? '',
   );
   const outcomes = useMemo(() => parseOutcomes(outcomesText), [outcomesText]);
+  const [brief, setBrief] = useState<BriefAnswers | null>(loadBrief);
+  const [showInterview, setShowInterview] = useState(false);
+  const compiledBrief = useMemo(() => (brief ? compileBrief(brief) : null), [brief]);
   const visibleResources = useMemo(
     () => (result ? applyFilters(result.resources, filters) : []),
     [result, filters],
@@ -310,6 +425,15 @@ export function App() {
       // storage unavailable; outcomes still work for this session
     }
   }, [outcomesText]);
+
+  useEffect(() => {
+    try {
+      if (brief) localStorage.setItem(BRIEF_KEY, JSON.stringify(brief));
+      else localStorage.removeItem(BRIEF_KEY);
+    } catch {
+      // storage unavailable; the brief still works for this session
+    }
+  }, [brief]);
 
   function saveSettings(next: Settings) {
     setSettings(next);
@@ -375,7 +499,13 @@ export function App() {
       ...(settings.youtubeApiKey ? { youtubeApiKey: settings.youtubeApiKey } : {}),
       ...rerankFields(),
       ...(outcomes.length ? { outcomes } : {}),
-      ...(counterpoint ? { counterpoint: true } : {}),
+      ...((compiledBrief ? compiledBrief.counterpoint : counterpoint)
+        ? { counterpoint: true }
+        : {}),
+      ...(compiledBrief && Object.keys(compiledBrief.constraints).length
+        ? { constraints: compiledBrief.constraints }
+        : {}),
+      ...(compiledBrief?.context ? { context: compiledBrief.context } : {}),
     };
   }
 
@@ -503,6 +633,7 @@ export function App() {
       topic: doc ? doc.name : topic.trim(),
       createdAt: new Date().toISOString(),
       ...(outcomes.length ? { outcomes } : {}),
+      ...(brief ? { brief } : {}),
       result,
     };
     const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
@@ -533,6 +664,11 @@ export function App() {
       setOutcomesText(
         Array.isArray(data.outcomes) ? data.outcomes.map((o) => o.text).join('\n') : '',
       );
+      setBrief(
+        data.brief && typeof data.brief === 'object'
+          ? { ...defaultBrief(), ...data.brief }
+          : null,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Could not open collection');
     }
@@ -560,6 +696,15 @@ export function App() {
 
   const llmAvailable = llmConfigured || Boolean(settings.providerUrl);
   const inputStyle = { flex: 1, padding: '10px 14px', fontSize: 16, borderRadius: 8, border: '1px solid #bbb' } as const;
+  const linkButton = {
+    border: 'none',
+    background: 'none',
+    color: '#4054b2',
+    cursor: 'pointer',
+    padding: 0,
+    fontSize: 13,
+    textDecoration: 'underline',
+  } as const;
 
   return (
     <main style={{ fontFamily: 'system-ui', maxWidth: 760, margin: '3rem auto', padding: '0 1rem', lineHeight: 1.5 }}>
@@ -583,6 +728,14 @@ export function App() {
           onDetected={setDetectedModels}
           onSave={saveSettings}
           onClose={() => setShowSettings(false)}
+        />
+      )}
+
+      {showInterview && (
+        <InterviewPanel
+          initial={brief}
+          onApply={(answers) => setBrief(answers)}
+          onClose={() => setShowInterview(false)}
         />
       )}
 
@@ -647,10 +800,31 @@ export function App() {
             }}
           />
         </label>
-        <label style={{ cursor: 'pointer' }}>
-          <input type="checkbox" checked={counterpoint} onChange={(e) => setCounterpoint(e.target.checked)} />{' '}
-          ⚖ Include counterpoints
-        </label>
+        {brief ? (
+          <span style={{ display: 'flex', alignItems: 'center', gap: 6, flexWrap: 'wrap' }}>
+            🎤 {briefSummary(brief)}
+            <button onClick={() => setShowInterview(true)} style={linkButton}>
+              edit
+            </button>
+            <button onClick={() => setBrief(null)} style={linkButton}>
+              clear
+            </button>
+          </span>
+        ) : (
+          <>
+            <label style={{ cursor: 'pointer' }}>
+              <input
+                type="checkbox"
+                checked={counterpoint}
+                onChange={(e) => setCounterpoint(e.target.checked)}
+              />{' '}
+              ⚖ Include counterpoints
+            </label>
+            <button onClick={() => setShowInterview(true)} style={linkButton}>
+              🎤 Interview me
+            </button>
+          </>
+        )}
         {batchAllowed && !doc && (
           <label style={{ cursor: 'pointer' }}>
             <input type="checkbox" checked={batchMode} onChange={(e) => setBatchMode(e.target.checked)} />{' '}
@@ -1126,6 +1300,185 @@ function Footers({
         </p>
       )}
     </>
+  );
+}
+
+function InterviewPanel({
+  initial,
+  onApply,
+  onClose,
+}: {
+  initial: BriefAnswers | null;
+  onApply: (answers: BriefAnswers) => void;
+  onClose: () => void;
+}) {
+  const [draft, setDraft] = useState<BriefAnswers>(initial ?? defaultBrief());
+  const set = (patch: Partial<BriefAnswers>) => setDraft({ ...draft, ...patch });
+  const legend = { fontSize: 13, color: '#444', marginTop: 14, fontWeight: 600 } as const;
+  const group = { display: 'flex', gap: 12, flexWrap: 'wrap', marginTop: 6 } as const;
+  const optionLabel = {
+    fontSize: 13,
+    color: '#333',
+    display: 'flex',
+    gap: 4,
+    alignItems: 'center',
+  } as const;
+  const option = (
+    name: string,
+    value: string,
+    label: string,
+    current: string,
+    onSelect: () => void,
+  ) => (
+    <label key={value} style={optionLabel}>
+      <input type="radio" name={name} checked={current === value} onChange={onSelect} /> {label}
+    </label>
+  );
+
+  return (
+    <section
+      style={{
+        border: '1px solid #ccd',
+        borderRadius: 10,
+        padding: '14px 18px',
+        margin: '1rem 0',
+        background: '#fafbff',
+      }}
+    >
+      <strong style={{ fontSize: 15 }}>Interview</strong>
+      <p style={{ fontSize: 12, color: '#777', margin: '4px 0 0' }}>
+        Four quick questions. The brief shapes stance, filters and how rationales are framed;
+        retrieval stays the same.
+      </p>
+
+      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+        <legend style={legend}>1. Should this support or challenge the current framing?</legend>
+        <div style={group}>
+          {option('stance', 'support', 'Support it', draft.stance, () =>
+            set({ stance: 'support' }),
+          )}
+          {option('stance', 'challenge', 'Challenge it', draft.stance, () =>
+            set({ stance: 'challenge' }),
+          )}
+          {option('stance', 'both', 'Both', draft.stance, () => set({ stance: 'both' }))}
+        </div>
+      </fieldset>
+
+      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+        <legend style={legend}>2. What will students already have?</legend>
+        <div style={group}>
+          {option('prior', 'none', 'Nothing yet', draft.priorKnowledge, () =>
+            set({ priorKnowledge: 'none' }),
+          )}
+          {option('prior', 'reading', 'A reading', draft.priorKnowledge, () =>
+            set({ priorKnowledge: 'reading' }),
+          )}
+          {option('prior', 'lecture', 'A lecture', draft.priorKnowledge, () =>
+            set({ priorKnowledge: 'lecture' }),
+          )}
+          {option('prior', 'notes', 'Their own notes', draft.priorKnowledge, () =>
+            set({ priorKnowledge: 'notes' }),
+          )}
+        </div>
+        <input
+          value={draft.priorNote}
+          onChange={(e) => set({ priorNote: e.target.value })}
+          placeholder="Anything else about what they have? (optional)"
+          aria-label="Additional prior knowledge"
+          style={{
+            width: '100%',
+            marginTop: 8,
+            padding: '8px 10px',
+            borderRadius: 6,
+            border: '1px solid #bbb',
+            fontSize: 13,
+          }}
+        />
+      </fieldset>
+
+      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+        <legend style={legend}>3. When will they use it?</legend>
+        <div style={group}>
+          {option('timing', 'pre-class', 'Before class', draft.timing, () =>
+            set({ timing: 'pre-class' }),
+          )}
+          {option('timing', 'in-class', 'In class', draft.timing, () =>
+            set({ timing: 'in-class' }),
+          )}
+          {option('timing', 'post-class', 'After class', draft.timing, () =>
+            set({ timing: 'post-class' }),
+          )}
+          {option('timing', 'assessment', 'For assessment', draft.timing, () =>
+            set({ timing: 'assessment' }),
+          )}
+        </div>
+      </fieldset>
+
+      <fieldset style={{ border: 'none', padding: 0, margin: 0 }}>
+        <legend style={legend}>4. Any constraints?</legend>
+        <div style={group}>
+          <label style={optionLabel}>
+            <input
+              type="checkbox"
+              checked={draft.openAccessOnly}
+              onChange={(e) => set({ openAccessOnly: e.target.checked })}
+            />{' '}
+            Open access only
+          </label>
+          <label style={optionLabel}>
+            <input
+              type="checkbox"
+              checked={draft.noVideo}
+              onChange={(e) => set({ noVideo: e.target.checked })}
+            />{' '}
+            No video
+          </label>
+          <label style={optionLabel}>
+            <input
+              type="checkbox"
+              checked={draft.recentOnly}
+              onChange={(e) => set({ recentOnly: e.target.checked })}
+            />{' '}
+            Published in the last 5 years
+          </label>
+        </div>
+      </fieldset>
+
+      <p style={{ fontSize: 12, color: '#777', margin: '12px 0 0' }}>
+        Brief: {briefSummary(draft)}
+      </p>
+
+      <div style={{ marginTop: 14, display: 'flex', gap: 8 }}>
+        <button
+          onClick={() => {
+            onApply(draft);
+            onClose();
+          }}
+          style={{
+            padding: '7px 16px',
+            borderRadius: 6,
+            border: 'none',
+            background: '#4054b2',
+            color: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          Use this brief
+        </button>
+        <button
+          onClick={onClose}
+          style={{
+            padding: '7px 16px',
+            borderRadius: 6,
+            border: '1px solid #bbb',
+            background: '#fff',
+            cursor: 'pointer',
+          }}
+        >
+          Skip
+        </button>
+      </div>
+    </section>
   );
 }
 

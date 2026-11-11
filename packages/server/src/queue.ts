@@ -3,6 +3,7 @@ import {
   suggestResources,
   type Outcome,
   type PipelineConfig,
+  type SearchConstraints,
   type SuggestResult,
 } from '@michaelborck/honeyguide-core';
 
@@ -24,6 +25,8 @@ interface SuggestJob {
   maxResults: number;
   counterpoint?: boolean;
   outcomes?: Outcome[];
+  constraints?: SearchConstraints;
+  context?: string;
 }
 
 const QUEUE_NAME = 'honeyguide-suggest';
@@ -49,6 +52,8 @@ export async function createRunner(
         maxResults: job.maxResults,
         counterpoint: job.counterpoint,
         outcomes: job.outcomes,
+        constraints: job.constraints,
+        context: job.context,
       },
       config,
     );

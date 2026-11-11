@@ -186,18 +186,27 @@ first list than a topic string, without becoming a chatbot.
   can run without an LLM; the LLM only helps phrase the questions and expand
   the query.
 
+**Status.** Implemented MVP (ADR-0018): one-screen four-question interview,
+`compileBrief`/`applyConstraints` pure functions, constraints applied before
+ranking, teaching context passed to the rationale prompt, brief persisted in
+browser storage and the collection file, and CLI flags for the scriptable
+subset. List mode remains the default.
+
 **Milestones.**
 
-1. Brief schema and compiler (pure functions, testable without the UI).
-2. Deterministic question flow in the web UI; no LLM required.
-3. Feed stance/filters/result mix into the pipeline.
-4. Evaluate against list mode on the golden set.
+1. Brief schema and compiler. Done.
+2. Deterministic question flow in the web UI; no LLM required. Done.
+3. Feed stance/filters into the pipeline. Done for stance and constraints;
+   result-mix weighting is still open.
+4. Evaluate against list mode on the golden set. Pending — needs a quality A/B
+   with human ratings, not just constraint checks.
 
 **Risks.** Adding friction. Keep it optional ("Interview me" next to the
-input), one screen, and remember answers per unit. ADR-0009 already defers
-this until list-mode evidence exists; the sequencing below respects that.
+input), one screen, and remember answers per unit. ADR-0009 deferred this
+until list-mode evidence existed; ADR-0018 supersedes it with the
+deterministic brief.
 
-**Effort:** M–L.
+**Effort:** M–L (MVP complete; quality A/B remains).
 
 ---
 
@@ -265,7 +274,7 @@ version the model in the cache key.
 | Next | Semantic re-ranking; education sources | Highest quality-per-effort, no persistence required |
 | Then | Learning-outcome alignment | Highest teaching-specific value; extends the collection file |
 | Later | Shared team collections (2b) | Needs server, accounts, database and an ADR set |
-| Last | Interview mode | Needs list-mode usage evidence (ADR-0009) |
+| Done (MVP) | Interview mode | Deterministic four-question brief shipped (ADR-0018); quality A/B pending |
 
 ## Success metrics
 

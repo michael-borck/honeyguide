@@ -39,6 +39,24 @@ async function readOutcomes(file?: string) {
   return outcomes;
 }
 
+/** The scriptable subset of the interview brief (ADR-0018). */
+function briefOptions(options: {
+  openAccess?: boolean;
+  noVideo?: boolean;
+  since?: string;
+  context?: string;
+}) {
+  const constraints = {
+    ...(options.openAccess ? { openAccessOnly: true } : {}),
+    ...(options.noVideo ? { excludeFormats: ['video' as const] } : {}),
+    ...(options.since ? { minYear: Number(options.since) } : {}),
+  };
+  return {
+    ...(Object.keys(constraints).length ? { constraints } : {}),
+    ...(options.context ? { context: options.context } : {}),
+  };
+}
+
 program
   .name('honeyguide')
   .description('Finds and verifies supporting resources for your teaching.')
@@ -58,6 +76,10 @@ program
   .option('--json', 'shorthand for --format json')
   .option('--collection', 'write a portable collection file (JSON) that can be reopened and shared')
   .option('--outcomes <path>', 'align resources to unit outcomes (one per line)')
+  .option('--open-access', 'only freely readable papers (best effort)')
+  .option('--no-video', 'omit video results')
+  .option('--since <year>', 'only resources published since this year')
+  .option('--context <text>', 'teaching context for the rationale')
   .option('-c, --counterpoint', 'also surface material disagreeing with the framing')
   .action(
     async (
@@ -69,6 +91,10 @@ program
         json?: boolean;
         collection?: boolean;
         outcomes?: string;
+        openAccess?: boolean;
+        noVideo?: boolean;
+        since?: string;
+        context?: string;
         counterpoint?: boolean;
       },
     ) => {
@@ -89,6 +115,7 @@ program
           maxResults: Number(options.maxResults),
           counterpoint: Boolean(options.counterpoint),
           ...(outcomes.length ? { outcomes } : {}),
+          ...briefOptions(options),
         },
         configFromEnv(),
       );
@@ -125,6 +152,10 @@ program
   .argument('<file>', 'text file with one topic per line')
   .option('-n, --max-results <n>', 'maximum resources per topic', '8')
   .option('--outcomes <path>', 'align each topic to unit outcomes (one per line)')
+  .option('--open-access', 'only freely readable papers (best effort)')
+  .option('--no-video', 'omit video results')
+  .option('--since <year>', 'only resources published since this year')
+  .option('--context <text>', 'teaching context for rationales')
   .option('-c, --counterpoint', 'also surface disagreeing material per topic')
   .option('--json', 'output JSON instead of markdown')
   .action(
@@ -134,6 +165,10 @@ program
         maxResults: string;
         counterpoint?: boolean;
         outcomes?: string;
+        openAccess?: boolean;
+        noVideo?: boolean;
+        since?: string;
+        context?: string;
         json?: boolean;
       },
     ) => {
@@ -147,6 +182,7 @@ program
         maxResults: Number(options.maxResults),
         counterpoint: Boolean(options.counterpoint),
         ...(outcomes.length ? { outcomes } : {}),
+        ...briefOptions(options),
       });
       process.stdout.write(
         (options.json ? JSON.stringify({ entries }, null, 2) : toBatchMarkdown(entries)) +

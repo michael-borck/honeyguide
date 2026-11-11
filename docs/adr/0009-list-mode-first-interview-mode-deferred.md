@@ -1,6 +1,6 @@
 # 0009. List mode first; interview mode deferred to v2
 
-**Status:** Accepted
+**Status:** Superseded by [0018](0018-interview-mode-deterministic-brief.md)
 **Date:** 2026-07-26
 
 ## Context

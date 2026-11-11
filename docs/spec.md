@@ -60,6 +60,11 @@ Interview mode is deferred to v2 for design reasons, not cost reasons. It will
 be better designed after watching colleagues use list mode and seeing where
 their judgement actually needs prompting.
 
+*Status update:* a deterministic four-question interview (stance, prior
+knowledge, timing, constraints) shipped as a retrieval brief in
+[ADR-0018](adr/0018-interview-mode-deterministic-brief.md); a quality A/B
+against list mode is still pending.
+
 ## 5. Architecture
 
 Mirrors the `cite-sight` monorepo layout.

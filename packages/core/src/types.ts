@@ -65,6 +65,16 @@ export interface Annotation {
  */
 export type Stance = 'supporting' | 'counterpoint';
 
+/** Optional constraints from the interview brief (ADR-0018). */
+export interface SearchConstraints {
+  /** Prefer freely readable papers; known subscription records are dropped. */
+  openAccessOnly?: boolean;
+  /** Formats to omit entirely (e.g. video). */
+  excludeFormats?: ResourceFormat[];
+  /** Drop resources with a known year older than this. */
+  minYear?: number;
+}
+
 /** A unit learning outcome, used for optional alignment (ADR-0017). */
 export interface Outcome {
   id: string;
@@ -128,6 +138,10 @@ export interface SuggestRequest {
   counterpoint?: boolean;
   /** Optional unit outcomes; when present the pipeline proposes alignments. */
   outcomes?: Outcome[];
+  /** Interview brief constraints (ADR-0018). */
+  constraints?: SearchConstraints;
+  /** Teaching context from the interview; used to frame rationales. */
+  context?: string;
 }
 
 export type ComponentState = 'ok' | 'degraded' | 'unavailable';

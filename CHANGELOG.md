@@ -53,6 +53,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Hand-labelled alignment evaluation: `npm run eval:alignment` (25 resources;
   84% accuracy, 94% precision, 79% recall, 100% abstention with
   `tev1:0.8b`).
+- Interview mode (ADR-0018): an optional four-question brief (stance, prior
+  knowledge, timing, constraints) compiles to `counterpoint`, search
+  constraints and a teaching-context string for rationales. The brief is
+  editable, persisted in browser/collection, and available from the UI without
+  an LLM. CLI flags: `--open-access`, `--no-video`, `--since`, `--context`.
+  ADR-0009 (deferral) is superseded.
 - Optional semantic re-ranking (ADR-0015): local Ollama embeddings
   (`nomic-embed-text`) reorder candidates by relevance before diversity
   balancing, with an in-process embedding cache. Used as the fallback when no

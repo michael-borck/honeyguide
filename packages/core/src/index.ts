@@ -21,6 +21,13 @@ export {
   type CollectionFile,
 } from './collection.js';
 export { configFromEnv, type PipelineConfig } from './config.js';
+export {
+  compileBrief,
+  applyConstraints,
+  type BriefAnswers,
+  type CompiledBrief,
+} from './brief.js';
+export { buildRationalePrompt } from './annotate/ollama.js';
 export { toMarkdown } from './export/markdown.js';
 export { toCitations, formatApa, formatHarvard } from './export/citations.js';
 export { toLmsHtml } from './export/lmsHtml.js';

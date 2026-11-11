@@ -17,7 +17,7 @@ old one.
 | [0006](0006-non-fatal-degradation.md) | Degradation is non-fatal | Accepted |
 | [0007](0007-defer-desktop-shell-choice.md) | Defer the desktop shell choice (Electron vs Tauri) | Superseded by 0010 |
 | [0008](0008-hosting-vps-docker-plus-github-pages.md) | Hosting: VPS Docker for the app, GitHub Pages for the landing page | Accepted |
-| [0009](0009-list-mode-first-interview-mode-deferred.md) | List mode first; interview mode deferred to v2 | Accepted |
+| [0009](0009-list-mode-first-interview-mode-deferred.md) | List mode first; interview mode deferred to v2 | Superseded by 0018 |
 | [0010](0010-electron-desktop-shell.md) | Electron for the desktop shell | Accepted |
 | [0011](0011-annotation-ladder.md) | Annotation ladder: LLM rationale degrades to extractive description | Accepted |
 | [0012](0012-counterpoint-via-query-inversion.md) | Counterpoint mode via query inversion | Accepted |
@@ -26,6 +26,7 @@ old one.
 | [0015](0015-semantic-reranking-with-local-embeddings.md) | Semantic re-ranking with local embeddings; Jev/ONNX as adapters | Accepted |
 | [0016](0016-local-system-one-decision-models.md) | Local System One decision models for re-ranking | Accepted |
 | [0017](0017-learning-outcome-alignment.md) | Learning-outcome alignment: local judgments, human confirmation | Accepted |
+| [0018](0018-interview-mode-deterministic-brief.md) | Interview mode: a deterministic retrieval brief, not a chatbot | Accepted |
 
 ## Adding an ADR
 
