@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/honeyguide-server",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "description": "Honeyguide server: exposes core over JSON, queues long work with BullMQ.",
   "license": "MIT",
