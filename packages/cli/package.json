@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/honeyguide-cli",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "description": "Honeyguide CLI: verified teaching resources from your terminal.",
   "license": "MIT",
   "author": "Michael Borck",

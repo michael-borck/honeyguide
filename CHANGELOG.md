@@ -7,6 +7,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.1] - 2026-11-14
+
 ### Changed
 
 - Re-ranking settings are explicit: a **Server default** mode uses the

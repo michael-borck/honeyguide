@@ -1,6 +1,6 @@
 {
   "name": "@michaelborck/honeyguide-web",
-  "version": "0.7.0",
+  "version": "0.7.1",
   "private": true,
   "description": "Honeyguide web UI (React + Vite). Also the future PWA.",
   "license": "MIT",
