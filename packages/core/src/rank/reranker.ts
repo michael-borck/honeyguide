@@ -27,6 +27,26 @@ export class EmbeddingReranker implements Reranker {
  * directly; embeddings are the fallback. With neither, ranking is unchanged.
  */
 export function createReranker(config: PipelineConfig): Reranker | null {
+  // An explicit Off beats a server-level re-ranker from the environment.
+  if (config.rerankMode === 'off') return null;
+
+  if (config.rerankMode === 'decision') {
+    return config.decisionUrl
+      ? new OllamaDecisionReranker(
+          config.decisionUrl,
+          config.decisionModel ?? 'tev1:0.8b',
+          config.decisionApiKey,
+        )
+      : null;
+  }
+
+  if (config.rerankMode === 'embeddings') {
+    if (!config.embeddingUrl) return null;
+    const provider = createEmbeddingProvider(config);
+    return provider ? new EmbeddingReranker(provider) : null;
+  }
+
+  // No explicit choice: decision first, then embeddings.
   if (config.decisionUrl) {
     return new OllamaDecisionReranker(
       config.decisionUrl,

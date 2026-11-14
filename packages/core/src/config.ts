@@ -39,6 +39,12 @@ export interface PipelineConfig {
   decisionModel?: string;
   decisionApiKey?: string;
   /**
+   * Per-request re-ranking choice. `off` explicitly disables a server-level
+   * re-ranker; `decision`/`embeddings` force one. Undefined keeps the server
+   * default precedence (decision, then embeddings).
+   */
+  rerankMode?: 'off' | 'decision' | 'embeddings';
+  /**
    * Ask the local LLM for a one-line "why this outcome" reason per alignment.
    * On by default when `ollamaUrl` is configured; set
    * HONEYGUIDE_ALIGNMENT_REASONS=0 to disable.

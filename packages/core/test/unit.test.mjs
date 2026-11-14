@@ -461,6 +461,28 @@ test('createReranker prefers a decision model, then embeddings', () => {
     createReranker({ decisionUrl: 'http://x', embeddingUrl: 'http://y' }).name,
     'ollama-systemone',
   );
+  assert.equal(createReranker({ decisionUrl: 'http://x', rerankMode: 'off' }), null);
+  assert.equal(createReranker({ embeddingUrl: 'http://x', rerankMode: 'off' }), null);
+  assert.equal(
+    createReranker({ decisionUrl: 'http://x', rerankMode: 'embeddings' }),
+    null,
+  );
+  assert.equal(
+    createReranker({
+      decisionUrl: 'http://x',
+      embeddingUrl: 'http://y',
+      rerankMode: 'embeddings',
+    }).name,
+    'embeddings',
+  );
+  assert.equal(
+    createReranker({
+      decisionUrl: 'http://x',
+      embeddingUrl: 'http://y',
+      rerankMode: 'decision',
+    }).name,
+    'ollama-systemone',
+  );
 });
 
 test('CachedEmbeddingProvider embeds only texts it has not seen', async () => {

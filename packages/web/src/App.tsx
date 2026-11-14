@@ -392,7 +392,7 @@ interface Settings {
    * 'auto' uses a detected local decision model (or embeddings) on a
    * localhost/desktop install; explicit modes override it.
    */
-  rerankMode: 'auto' | 'off' | 'embeddings' | 'decision';
+  rerankMode: 'server' | 'auto' | 'off' | 'embeddings' | 'decision';
 }
 
 interface DetectedModels {
@@ -413,6 +413,8 @@ const EMPTY_SETTINGS: Settings = {
   embeddingModel: 'nomic-embed-text',
   rerankMode: 'auto',
 };
+
+const SERVER_DEFAULTS: Settings = { ...EMPTY_SETTINGS, rerankMode: 'server' };
 
 function loadSettings(): Settings {
   try {
@@ -560,9 +562,12 @@ export function App() {
    * local decision model first, then embeddings, and otherwise sends nothing.
    */
   function rerankFields() {
+    if (settings.rerankMode === 'server') return {};
+    if (settings.rerankMode === 'off') return { rerank: 'off' };
     if (settings.rerankMode === 'decision') {
       return settings.decisionUrl
         ? {
+            rerank: 'decision',
             decision: {
               url: settings.decisionUrl,
               model: settings.decisionModel || 'tev1:0.8b',
@@ -573,6 +578,7 @@ export function App() {
     if (settings.rerankMode === 'embeddings') {
       return settings.embeddingUrl
         ? {
+            rerank: 'embeddings',
             embeddings: {
               url: settings.embeddingUrl,
               model: settings.embeddingModel || 'nomic-embed-text',
@@ -580,9 +586,10 @@ export function App() {
           }
         : {};
     }
-    if (settings.rerankMode === 'off') return {};
+    // auto
     if (detectedModels?.decisionModels.length) {
       return {
+        rerank: 'decision',
         decision: {
           url: detectedModels.url,
           model: detectedModels.decisionModels[0],
@@ -591,6 +598,7 @@ export function App() {
     }
     if (detectedModels?.embeddingModels.length) {
       return {
+        rerank: 'embeddings',
         embeddings: {
           url: detectedModels.url,
           model: detectedModels.embeddingModels[0],
@@ -1835,12 +1843,23 @@ function SettingsPanel({
             setDraft({ ...draft, rerankMode: e.target.value as Settings['rerankMode'] })
           }
         >
+          <option value="server">Server default — use this instance's .env</option>
           <option value="auto">Auto — use a local decision model if detected</option>
-          <option value="off">Off — diversity only</option>
+          <option value="off">Off — explicitly disable re-ranking</option>
           <option value="embeddings">Embeddings — fast, local</option>
           <option value="decision">System One decision model — best quality</option>
         </select>
       </label>
+      {draft.rerankMode === 'server' && (
+        <p className="hg-help">
+          Uses whatever this instance's environment configures (or diversity only if none).
+        </p>
+      )}
+      {draft.rerankMode === 'off' && (
+        <p className="hg-help">
+          Overrides any server-configured re-ranker for requests from this browser.
+        </p>
+      )}
       {draft.rerankMode === 'auto' && (
         <p className="hg-help">
           {detected?.decisionModels.length
@@ -1941,7 +1960,20 @@ function SettingsPanel({
         <button className="hg-btn hg-btn-ghost" onClick={onClose}>
           Cancel
         </button>
+        <button
+          className="hg-btn hg-btn-ghost"
+          onClick={() => {
+            onSave(SERVER_DEFAULTS);
+            onClose();
+          }}
+        >
+          Use server defaults
+        </button>
       </div>
+      <p className="hg-help">
+        Use server defaults clears provider keys, the YouTube key and all model overrides in
+        this browser.
+      </p>
     </div>
   );
 }

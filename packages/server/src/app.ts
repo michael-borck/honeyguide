@@ -76,6 +76,8 @@ interface SuggestBody {
   embeddings?: { url?: string; model?: string };
   /** Optional per-request local System One decision model (ADR-0016). */
   decision?: { url?: string; model?: string };
+  /** Explicit re-ranking choice; `off` overrides a server .env re-ranker. */
+  rerank?: 'off' | 'auto' | 'decision' | 'embeddings';
   /** Optional unit outcomes; when present the pipeline proposes alignments. */
   outcomes?: Outcome[];
   /** Interview brief constraints and teaching context (ADR-0018). */
@@ -316,18 +318,21 @@ export function createApp(options: AppOptions): express.Express {
             }
           : {}),
         ...(body.youtubeApiKey ? { youtubeApiKey: body.youtubeApiKey } : {}),
-        ...(body.decision?.url
+        ...(body.decision?.url && body.rerank !== 'off'
           ? {
               decisionUrl: body.decision.url,
               decisionModel: body.decision.model || 'tev1:0.8b',
+              rerankMode: 'decision' as const,
             }
           : {}),
-        ...(body.embeddings?.url
+        ...(body.embeddings?.url && body.rerank !== 'off'
           ? {
               embeddingUrl: body.embeddings.url,
               embeddingModel: body.embeddings.model || 'nomic-embed-text',
+              rerankMode: 'embeddings' as const,
             }
           : {}),
+        ...(body.rerank === 'off' ? { rerankMode: 'off' as const } : {}),
         ...(options.screenshot ? { screenshot: options.screenshot } : {}),
       },
     };

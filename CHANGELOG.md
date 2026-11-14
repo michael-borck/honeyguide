@@ -7,6 +7,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Changed
+
+- Re-ranking settings are explicit: a **Server default** mode uses the
+  instance's `.env`, **Off** now overrides a server-configured re-ranker, and
+  **Use server defaults** in Settings clears browser-side provider, YouTube and
+  model overrides.
+
 ## [0.7.0] - 2026-11-14
 
 ### Added
