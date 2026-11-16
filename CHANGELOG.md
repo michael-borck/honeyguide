@@ -7,6 +7,42 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.2] - 2026-11-16
+
+### Security
+
+- SSRF defence for all server-side fetches of user-influenced URLs (BYO
+  provider/decision/embedding endpoints, web-search results, page-metadata
+  lookups, link rechecks): hostnames are resolved and private/reserved
+  addresses rejected, with every redirect hop re-validated
+  (`packages/core/src/net/ssrf.ts`). The hosted tier refuses private targets;
+  desktop/localhost opts in.
+- Server hardening: helmet (CSP, HSTS, `nosniff`, frame-deny), per-IP rate
+  limiting on `/api`, request/header timeouts, configurable `trust proxy`, and
+  generic client-facing errors (details logged server-side only).
+- BYO API keys now live in `sessionStorage` (cleared when the tab closes) rather
+  than long-lived `localStorage`.
+- Graceful shutdown: SSE writes stop on client disconnect; the server drains the
+  queue and exits on SIGTERM/SIGINT.
+- Docker image runs as the unprivileged `node` user with `npm ci`; compose waits
+  on a Redis healthcheck and adds `no-new-privileges`.
+- Updated Express (4.22.3) and multer (2.x); `npm audit --omit=dev` is clean.
+
+### Fixed
+
+- `selectUsable` paired resources with the wrong candidate when a re-ranker
+  reordered the list (it indexed the pre-rerank array). Pairing is now by object
+  identity.
+- Batch export no longer re-runs retrieval — it exports the on-screen result.
+
+### Changed
+
+- New browser-safe entry `@michaelborck/honeyguide-core/web`; the web UI imports
+  `parseOutcomes`, `compileBrief`, `briefSummary`, `verificationText`, collection
+  helpers and shared types instead of maintaining copies.
+- Internal: shared `clamp`/`mapLimit`, one Ollama client and one System One
+  client; `App.tsx` split into `components/` and `lib/`; improved text contrast.
+
 ## [0.7.1] - 2026-11-14
 
 ### Changed
