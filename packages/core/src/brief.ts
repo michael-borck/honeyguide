@@ -70,6 +70,35 @@ export function compileBrief(
   };
 }
 
+/** A compact one-line summary of a brief, for chips and headings. */
+export function briefSummary(answers: BriefAnswers): string {
+  const stance = {
+    support: 'Support framing',
+    challenge: 'Challenge framing',
+    both: 'Support + counterpoints',
+  }[answers.stance];
+  const prior = {
+    none: 'no prior knowledge',
+    reading: 'has a reading',
+    lecture: 'has had a lecture',
+    notes: 'has notes',
+  }[answers.priorKnowledge];
+  const timing = {
+    'pre-class': 'before class',
+    'in-class': 'in class',
+    'post-class': 'after class',
+    assessment: 'for assessment',
+  }[answers.timing];
+  const constraints = [
+    answers.openAccessOnly && 'open access',
+    answers.noVideo && 'no video',
+    answers.recentOnly && 'recent only',
+  ]
+    .filter(Boolean)
+    .join(', ');
+  return `${stance} · ${prior} · ${timing}${constraints ? ` · ${constraints}` : ''}`;
+}
+
 /**
  * Apply brief constraints to candidates before ranking. `openAccessOnly` is
  * best-effort: only papers explicitly flagged as subscription are dropped;

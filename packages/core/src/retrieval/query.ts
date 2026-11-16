@@ -1,4 +1,5 @@
 import type { PipelineConfig } from '../config.js';
+import { ollamaGenerate } from '../annotate/ollamaClient.js';
 
 const SHORT_INPUT_CHARS = 150;
 const QUERY_TIMEOUT_MS = 20_000;
@@ -35,27 +36,16 @@ export async function deriveQuery(input: string, config: PipelineConfig): Promis
 }
 
 async function llmKeywords(text: string, config: PipelineConfig): Promise<string> {
-  const res = await fetch(`${config.ollamaUrl!.replace(/\/$/, '')}/api/generate`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      ...(config.ollamaApiKey ? { authorization: `Bearer ${config.ollamaApiKey}` } : {}),
-    },
-    body: JSON.stringify({
-      model: config.ollamaModel ?? 'llama3.1:8b',
-      prompt:
-        `This is teaching material:\n\n${text.slice(0, 3000)}\n\n` +
-        `Reply with a 3-8 word search query capturing its main topic, ` +
-        `suitable for an academic search engine. Reply with the query only.`,
-      stream: false,
-      think: false,
-      options: { num_predict: 30, temperature: 0.1 },
-    }),
-    signal: AbortSignal.timeout(QUERY_TIMEOUT_MS),
+  const prompt =
+    `This is teaching material:\n\n${text.slice(0, 3000)}\n\n` +
+    `Reply with a 3-8 word search query capturing its main topic, ` +
+    `suitable for an academic search engine. Reply with the query only.`;
+  const response = await ollamaGenerate(config, prompt, {
+    numPredict: 30,
+    temperature: 0.1,
+    timeoutMs: QUERY_TIMEOUT_MS,
   });
-  if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
-  const data = (await res.json()) as { response?: string };
-  const query = data.response?.trim().replace(/^["']|["']$/g, '').split('\n')[0];
+  const query = response.replace(/^["']|["']$/g, '').split('\n')[0];
   if (!query || query.length > 120) throw new Error('unusable query from LLM');
   return query;
 }

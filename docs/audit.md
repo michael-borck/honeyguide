@@ -219,3 +219,49 @@ and its concept are original to this repository.
 - Desktop capture: `packages/desktop/src/main.ts`
 - Deployment: `Dockerfile`, `docker-compose.yml`, `.github/workflows/`
 - Hosting decision: `docs/adr/0008-hosting-vps-docker-plus-github-pages.md`
+
+---
+
+## Remediation log — 2026-11-16 (v0.7.1)
+
+A follow-up security, UI/UX and refactoring audit was actioned in full.
+
+**Security**
+
+- **SSRF (new `packages/core/src/net/ssrf.ts`).** `assertPublicUrl` resolves the
+  hostname and rejects private/reserved addresses; `safeFetch` re-validates every
+  redirect hop. Applied to BYO provider/decision/embedding endpoints (validated at
+  the server boundary), web-result verification, page-metadata fetches and link
+  rechecks. The hosted tier refuses private targets; desktop/localhost sets
+  `allowPrivateTargets`/`allowPrivateNetwork`.
+- **Server hardening.** helmet with a CSP (plus HSTS, `nosniff`, frame-deny), a
+  per-IP rate limit on `/api` (`express-rate-limit`), configurable `trust proxy`,
+  request/headers timeouts, and generic client-facing errors with server-side
+  logging.
+- **Dependencies.** `npm audit --omit=dev` is clean (express 4.22.3, multer 2.x).
+- **Secrets.** BYO keys moved to `sessionStorage`; non-secret settings stay in
+  `localStorage`.
+- **Lifecycle.** SSE stops writing on client disconnect; the server drains the
+  queue and closes on SIGTERM/SIGINT.
+- **Docker.** Runs as the unprivileged `node` user, uses `npm ci`, and waits on a
+  Redis healthcheck; compose adds `no-new-privileges` and an init process.
+
+**Refactoring**
+
+- New browser-safe entry `@michaelborck/honeyguide-core/web`; the web UI now
+  imports `parseOutcomes`, `compileBrief`, `briefSummary`, `verificationText`,
+  the collection helpers and shared types instead of copy-pasting them.
+- Shared `clamp`/`mapLimit` (`core/src/util.ts`), one Ollama client
+  (`annotate/ollamaClient.ts`) and one System One client
+  (`rank/systemOneClient.ts`).
+- `packages/web/src/App.tsx` split into `components/` and `lib/`.
+
+**Correctness**
+
+- Fixed a real bug in `selectUsable`: resources were paired with the wrong
+  candidate when a re-ranker reordered the list (indexing the pre-rerank array).
+  Pairing is now by object identity.
+- Batch export no longer re-runs retrieval; it exports the on-screen result.
+
+**Verification.** `npm run build` (all workspaces) and `npm test` (62 tests, incl.
+new SSRF tests) pass.

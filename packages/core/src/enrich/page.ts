@@ -1,4 +1,4 @@
-import { isPrivateUrl } from '@michaelborck/cite-sight-core';
+import { safeFetch } from '../net/ssrf.js';
 
 export interface PageMeta {
   ogImage?: string;
@@ -10,9 +10,10 @@ const MAX_HTML_BYTES = 512 * 1024;
 const FETCH_TIMEOUT_MS = 8000;
 
 /**
- * Extract og:image / description / site name from a page's <head> with one
- * SSRF-guarded fetch (ADR-0005 layer 2; feeds ADR-0011 rung 2). Regex-based
- * on purpose: it only needs meta tags, not a DOM.
+ * Extract og:image / description / site name from a page's <head>. The fetch is
+ * SSRF-guarded (DNS + per-hop redirect revalidation) because the URL comes from
+ * a web-search result, not from a trusted source (ADR-0005 layer 2; feeds
+ * ADR-0011 rung 2). Regex-based on purpose: it only needs meta tags, not a DOM.
  */
 export function parsePageMeta(html: string): PageMeta {
   const head = html.slice(0, MAX_HTML_BYTES);
@@ -51,13 +52,22 @@ function decodeEntities(s: string): string {
     .replace(/&#0?39;|&apos;/g, "'");
 }
 
-export async function fetchPageMeta(url: string): Promise<PageMeta> {
-  if (isPrivateUrl(url)) throw new Error('refusing to fetch private address');
-  const res = await fetch(url, {
-    headers: { accept: 'text/html', 'user-agent': 'honeyguide/0.1 (+https://github.com/michael-borck/honeyguide)' },
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-    redirect: 'follow',
-  });
+export async function fetchPageMeta(
+  url: string,
+  allowPrivate = false,
+): Promise<PageMeta> {
+  const res = await safeFetch(
+    url,
+    {
+      headers: {
+        accept: 'text/html',
+        'user-agent':
+          'honeyguide/0.7 (+https://github.com/michael-borck/honeyguide)',
+      },
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    },
+    { allowPrivate },
+  );
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const reader = res.body?.getReader();
   if (!reader) return parsePageMeta(await res.text());

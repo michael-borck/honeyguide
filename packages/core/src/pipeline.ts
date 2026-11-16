@@ -28,6 +28,7 @@ import { diversify } from './rank/diversity.js';
 import { createReranker } from './rank/reranker.js';
 import { orderByScores } from './rank/semantic.js';
 import { deriveQuery } from './retrieval/query.js';
+import { mapLimit } from './util.js';
 
 const DEFAULT_MAX_RESULTS = 10;
 const ANNOTATE_CONCURRENCY = 3;
@@ -171,10 +172,11 @@ export async function suggestResources(
     stance: Stance,
   ): Promise<Array<{ candidate: Candidate; resource: Resource }>> {
     onProgress?.({ stage: 'verify' });
+    const verifyOptions = { allowPrivate: config.allowPrivateNetwork };
     const verified = new Map<Candidate, VerificationOutcome>();
     await Promise.all(
       pool.map(async (c) => {
-        verified.set(c, await verifyCandidate(c));
+        verified.set(c, await verifyCandidate(c, verifyOptions));
       }),
     );
     const usable = pool.filter((c) => verified.get(c)?.status !== 'dead');
@@ -195,12 +197,21 @@ export async function suggestResources(
     }
 
     onProgress?.({ stage: 'rank' });
-    const preliminary = ranked.map((c) =>
-      toResource(c, verified.get(c) ?? { status: 'unverified', basis: 'none' }, stance),
-    );
+    // Pair each resource with the candidate it came from. The re-ranker may
+    // reorder `usable`, so index by object identity rather than by position.
+    const candidateByResource = new Map<Resource, Candidate>();
+    const preliminary = ranked.map((c) => {
+      const resource = toResource(
+        c,
+        verified.get(c) ?? { status: 'unverified', basis: 'none' },
+        stance,
+      );
+      candidateByResource.set(resource, c);
+      return resource;
+    });
     const chosen = diversify(preliminary, count);
     return chosen.map((resource) => ({
-      candidate: usable[preliminary.indexOf(resource)],
+      candidate: candidateByResource.get(resource)!,
       resource,
     }));
   }
@@ -222,7 +233,7 @@ export async function suggestResources(
     await mapLimit(pairs, ANNOTATE_CONCURRENCY, async ({ candidate, resource }, index) => {
       if ((!candidate.thumbnailUrl || !candidate.description) && !candidate.doi) {
         try {
-          const meta = await fetchPageMeta(candidate.url);
+          const meta = await fetchPageMeta(candidate.url, cfg.allowPrivateNetwork);
           candidate.thumbnailUrl ??= meta.ogImage;
           candidate.description ??= meta.description;
           resource.thumbnailUrl = candidate.thumbnailUrl ?? null;
@@ -328,19 +339,4 @@ function initialAccess(candidate: Candidate): AccessStatus {
     default:
       return 'unknown';
   }
-}
-
-async function mapLimit<T>(
-  items: T[],
-  limit: number,
-  fn: (item: T, index: number) => Promise<void>,
-): Promise<void> {
-  let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++;
-      await fn(items[i], i);
-    }
-  });
-  await Promise.all(workers);
 }

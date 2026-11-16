@@ -3,6 +3,8 @@ import os from 'node:os';
 import { randomBytes } from 'node:crypto';
 import { writeFile, unlink } from 'node:fs/promises';
 import express from 'express';
+import helmet from 'helmet';
+import rateLimit from 'express-rate-limit';
 import multer from 'multer';
 import {
   toMarkdown,
@@ -11,6 +13,8 @@ import {
   extract,
   recheckResources,
   createSearchProvider,
+  clamp,
+  assertPublicUrl,
   type Outcome,
   type PipelineConfig,
   type ProgressListener,
@@ -58,6 +62,18 @@ export interface AppOptions {
   allowBatch?: boolean;
   /** Screenshot engine, injected by tiers that have one (ADR-0005 layer 3). */
   screenshot?: (url: string) => Promise<string | undefined>;
+  /**
+   * Permit server-side fetches to private/reserved addresses. The hosted
+   * server leaves this false so client-supplied URLs (provider endpoints,
+   * web results, rechecks) cannot reach internal networks (SSRF); the
+   * desktop app sets it true because it is a single-user localhost service.
+   */
+  allowPrivateTargets?: boolean;
+  /**
+   * Per-IP request cap for `/api`. Pass `false` to disable (desktop). Defaults
+   * to 120 requests/minute when omitted.
+   */
+  rateLimit?: false | { windowMs: number; max: number };
 }
 
 interface SuggestBody {
@@ -86,9 +102,72 @@ interface SuggestBody {
   counterpoint?: boolean;
 }
 
+/** A client error whose message is safe to return to the caller. */
+class BadRequest extends Error {}
+
 export function createApp(options: AppOptions): express.Express {
   const app = express();
+  app.disable('x-powered-by');
+  // Correct client IPs behind a reverse proxy (hosted VPS). Set
+  // HONEYGUIDE_TRUST_PROXY=0 when the server is exposed directly, so clients
+  // cannot spoof X-Forwarded-For to dodge the rate limiter.
+  app.set('trust proxy', Number(process.env.HONEYGUIDE_TRUST_PROXY ?? 1));
+  app.use(
+    helmet({
+      contentSecurityPolicy: {
+        useDefaults: false,
+        directives: {
+          'default-src': ["'self'"],
+          // 'unsafe-inline' is required by the theme-bootstrap script in
+          // index.html; all other scripts are same-origin bundles.
+          'script-src': ["'self'", "'unsafe-inline'"],
+          'style-src': ["'self'", "'unsafe-inline'"],
+          'img-src': ["'self'", 'data:', 'https:'],
+          'connect-src': ["'self'"],
+          'font-src': ["'self'"],
+          'object-src': ["'none'"],
+          'base-uri': ["'self'"],
+          'form-action': ["'self'"],
+          'frame-ancestors': ["'none'"],
+        },
+      },
+      // Thumbnails are cross-origin https images without CORP headers; COEP
+      // would block them.
+      crossOriginEmbedderPolicy: false,
+    }),
+  );
+
+  const defaultMax = Number(process.env.HONEYGUIDE_RATE_LIMIT ?? 120);
+  const rateLimitConfig =
+    options.rateLimit === false
+      ? null
+      : (options.rateLimit ?? {
+          windowMs: 60_000,
+          max: Number.isFinite(defaultMax) ? defaultMax : 120,
+        });
+  if (rateLimitConfig) {
+    const limiter = rateLimit({
+      windowMs: rateLimitConfig.windowMs,
+      limit: rateLimitConfig.max,
+      standardHeaders: 'draft-7',
+      legacyHeaders: false,
+      // Health checks from Docker/orchestrators should never be throttled.
+      skip: (req) => req.path === '/health',
+    });
+    app.use('/api', limiter);
+  }
+
   app.use(express.json({ limit: '10mb' }));
+
+  /** Log the real error server-side; never leak internals to the client. */
+  function fail(res: express.Response, error: unknown): void {
+    if (error instanceof BadRequest) {
+      res.status(400).json({ error: error.message });
+      return;
+    }
+    console.error('[honeyguide] request failed:', error instanceof Error ? error : error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 
   // Component health is surfaced to the UI per ADR-0006.
   app.get('/api/health', (_req, res) => {
@@ -175,6 +254,27 @@ export function createApp(options: AppOptions): express.Express {
     }
   });
 
+  /**
+   * Resolve the pipeline config, rejecting client-supplied endpoints that
+   * resolve to private/reserved addresses (SSRF, S1). The server's own
+   * configured endpoints are trusted and never re-validated here.
+   */
+  async function buildConfig(
+    body: SuggestBody,
+  ): Promise<{ pipelineConfig: PipelineConfig; byok: boolean }> {
+    const clientUrls = [body.provider?.url, body.decision?.url, body.embeddings?.url].filter(
+      Boolean,
+    ) as string[];
+    for (const url of clientUrls) {
+      try {
+        await assertPublicUrl(url, options.allowPrivateTargets ?? false);
+      } catch {
+        throw new BadRequest('Refusing to use a private or invalid provider URL.');
+      }
+    }
+    return mergeConfig(body);
+  }
+
   app.post('/api/suggest', async (req, res) => {
     const body = req.body as SuggestBody;
     const input = body.input?.trim();
@@ -182,7 +282,14 @@ export function createApp(options: AppOptions): express.Express {
       res.status(400).json({ error: 'input is required' });
       return;
     }
-    const { pipelineConfig, byok } = mergeConfig(body);
+    let resolved: { pipelineConfig: PipelineConfig; byok: boolean };
+    try {
+      resolved = await buildConfig(body);
+    } catch (error) {
+      fail(res, error);
+      return;
+    }
+    const { pipelineConfig, byok } = resolved;
     try {
       const result = await options.run(
         {
@@ -212,9 +319,7 @@ export function createApp(options: AppOptions): express.Express {
           res.json(result);
       }
     } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      fail(res, error);
     }
   });
 
@@ -232,16 +337,29 @@ export function createApp(options: AppOptions): express.Express {
       res.status(400).json({ error: 'input is required' });
       return;
     }
+    let resolved: { pipelineConfig: PipelineConfig; byok: boolean };
+    try {
+      resolved = await buildConfig(body);
+    } catch (error) {
+      fail(res, error);
+      return;
+    }
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache, no-transform');
     res.setHeader('Connection', 'keep-alive');
     res.setHeader('X-Accel-Buffering', 'no');
     (res as unknown as { flushHeaders?: () => void }).flushHeaders?.();
 
+    // Stop writing (and let the work wind down) if the client disconnects.
+    let closed = false;
+    req.on('close', () => {
+      closed = true;
+    });
     const send = (event: string, data: unknown) => {
+      if (closed || res.writableEnded) return;
       res.write(`event: ${event}\ndata: ${JSON.stringify(data)}\n\n`);
     };
-    const { pipelineConfig } = mergeConfig(body);
+
     try {
       const result = await runStream(
         {
@@ -252,16 +370,21 @@ export function createApp(options: AppOptions): express.Express {
           constraints: body.constraints,
           context: body.context,
         },
-        pipelineConfig,
+        resolved.pipelineConfig,
         (event) => send('progress', event),
       );
       send('result', result);
       res.end();
     } catch (error) {
-      send('error', {
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
-      res.end();
+      if (!closed) {
+        send('error', {
+          error: error instanceof BadRequest ? error.message : 'Internal server error',
+        });
+        if (!(error instanceof BadRequest)) {
+          console.error('[honeyguide] stream failed:', error instanceof Error ? error : error);
+        }
+        res.end();
+      }
     }
   });
 
@@ -280,12 +403,18 @@ export function createApp(options: AppOptions): express.Express {
       res.status(400).json({ error: 'topics[] is required' });
       return;
     }
-    const { pipelineConfig } = mergeConfig(body);
+    let resolved: { pipelineConfig: PipelineConfig; byok: boolean };
+    try {
+      resolved = await buildConfig(body);
+    } catch (error) {
+      fail(res, error);
+      return;
+    }
     try {
       const { suggestBatch, toBatchMarkdown } = await import(
         '@michaelborck/honeyguide-core'
       );
-      const entries = await suggestBatch(topics, pipelineConfig, {
+      const entries = await suggestBatch(topics, resolved.pipelineConfig, {
         maxResults: clamp(body.maxResults ?? 10, 1, 25),
         counterpoint: Boolean(body.counterpoint),
         outcomes: body.outcomes,
@@ -298,9 +427,7 @@ export function createApp(options: AppOptions): express.Express {
         res.json({ entries });
       }
     } catch (error) {
-      res.status(500).json({
-        error: error instanceof Error ? error.message : 'Unknown error',
-      });
+      fail(res, error);
     }
   });
 
@@ -342,7 +469,7 @@ export function createApp(options: AppOptions): express.Express {
   const ALLOWED_EXTENSIONS = new Set(['.pdf', '.docx', '.txt', '.md']);
   const upload = multer({
     storage: multer.memoryStorage(),
-    limits: { fileSize: 20 * 1024 * 1024 },
+    limits: { fileSize: 20 * 1024 * 1024, files: 1 },
   });
 
   app.post('/api/extract', upload.single('file'), async (req, res) => {
@@ -363,9 +490,8 @@ export function createApp(options: AppOptions): express.Express {
       const doc = await extract(tmp);
       res.json({ fileName: file.originalname, text: doc.text.slice(0, 200_000) });
     } catch (error) {
-      res.status(422).json({
-        error: error instanceof Error ? error.message : 'extraction failed',
-      });
+      console.error('[honeyguide] extraction failed:', error instanceof Error ? error : error);
+      res.status(422).json({ error: 'Could not extract text from that file.' });
     } finally {
       await unlink(tmp).catch(() => {});
     }
@@ -380,11 +506,12 @@ export function createApp(options: AppOptions): express.Express {
       return;
     }
     try {
-      res.json({ entries: await recheckResources(resources) });
+      const entries = await recheckResources(resources, {
+        allowPrivate: options.allowPrivateTargets ?? false,
+      });
+      res.json({ entries });
     } catch (error) {
-      res
-        .status(500)
-        .json({ error: error instanceof Error ? error.message : 'recheck failed' });
+      fail(res, error);
     }
   });
 
@@ -425,8 +552,4 @@ export function createApp(options: AppOptions): express.Express {
   });
 
   return app;
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, Number.isFinite(n) ? n : min));
 }

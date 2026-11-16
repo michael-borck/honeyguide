@@ -1,4 +1,5 @@
 import type { SearchProvider, WebSearchResult } from './types.js';
+import { clamp } from '../../util.js';
 
 interface SerperResult {
   title?: string;
@@ -40,8 +41,4 @@ export class SerperSearchProvider implements SearchProvider {
       .slice(0, num)
       .map((r) => ({ title: r.title, url: r.link, content: r.snippet || undefined }));
   }
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, Number.isFinite(n) ? n : min));
 }

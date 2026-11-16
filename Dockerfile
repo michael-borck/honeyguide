@@ -5,18 +5,23 @@ WORKDIR /app
 # server image, so skip the download.
 ENV ELECTRON_SKIP_BINARY_DOWNLOAD=1
 COPY . .
-RUN npm install && npm run build -w @michaelborck/honeyguide-core -w @michaelborck/honeyguide-server && npm run build -w @michaelborck/honeyguide-web
+RUN npm ci \
+  && npm run build -w @michaelborck/honeyguide-core -w @michaelborck/honeyguide-server \
+  && npm run build -w @michaelborck/honeyguide-web
 
 FROM node:22-alpine
 WORKDIR /app
 ENV NODE_ENV=production
-COPY --from=build /app/package.json ./
-COPY --from=build /app/packages/core/package.json packages/core/
-COPY --from=build /app/packages/core/dist packages/core/dist
-COPY --from=build /app/packages/server/package.json packages/server/
-COPY --from=build /app/packages/server/dist packages/server/dist
-COPY --from=build /app/packages/web/dist packages/server/public
-RUN npm install --omit=dev
+COPY --from=build --chown=node:node /app/package.json ./
+COPY --from=build --chown=node:node /app/package-lock.json ./
+COPY --from=build --chown=node:node /app/packages/core/package.json packages/core/
+COPY --from=build --chown=node:node /app/packages/core/dist packages/core/dist
+COPY --from=build --chown=node:node /app/packages/server/package.json packages/server/
+COPY --from=build --chown=node:node /app/packages/server/dist packages/server/dist
+COPY --from=build --chown=node:node /app/packages/web/dist packages/server/public
+RUN npm install --omit=dev --no-audit --no-fund && npm cache clean --force
+# Run as the unprivileged `node` user shipped with the base image.
+USER node
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
   CMD wget -qO- http://localhost:3000/api/health || exit 1

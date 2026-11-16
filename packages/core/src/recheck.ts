@@ -1,6 +1,6 @@
-import { checkUrl, lookupDoi } from '@michaelborck/cite-sight-core';
+import { lookupDoi } from '@michaelborck/cite-sight-core';
 import type { Resource, VerificationStatus } from './types.js';
-import { mapUrlStatus } from './verify/verify.js';
+import { mapUrlStatus, probeUrl } from './verify/verify.js';
 
 export interface RecheckEntry {
   resource: Resource;
@@ -9,16 +9,24 @@ export interface RecheckEntry {
   changed: boolean;
 }
 
+export interface RecheckOptions {
+  /** Allow private/reserved targets (desktop/localhost only). */
+  allowPrivate?: boolean;
+}
+
 const RECHECK_CONCURRENCY = 4;
 
 /**
  * Link-rot re-run mode (spec §6): take a previously saved result list and
  * re-verify every resource, reporting what changed. DOI-bearing resources
  * are re-checked against the academic databases (a DOI that resolves is
- * alive regardless of publisher bot-walls); everything else gets a fresh
- * HTTP probe.
+ * alive regardless of publisher bot-walls); everything else gets a fresh,
+ * SSRF-guarded HTTP probe.
  */
-export async function recheckResources(resources: Resource[]): Promise<RecheckEntry[]> {
+export async function recheckResources(
+  resources: Resource[],
+  options: RecheckOptions = {},
+): Promise<RecheckEntry[]> {
   const entries: RecheckEntry[] = new Array(resources.length);
   let next = 0;
   const workers = Array.from(
@@ -27,7 +35,7 @@ export async function recheckResources(resources: Resource[]): Promise<RecheckEn
       while (next < resources.length) {
         const i = next++;
         const resource = resources[i];
-        const current = await recheckOne(resource);
+        const current = await recheckOne(resource, options);
         entries[i] = {
           resource,
           previous: resource.verification,
@@ -41,15 +49,15 @@ export async function recheckResources(resources: Resource[]): Promise<RecheckEn
   return entries;
 }
 
-async function recheckOne(resource: Resource): Promise<VerificationStatus> {
+async function recheckOne(resource: Resource, options: RecheckOptions): Promise<VerificationStatus> {
   try {
     const doi = resource.url.match(/doi\.org\/(10\..+)$/)?.[1];
     if (doi) {
       const work = await lookupDoi(doi);
       return work ? 'verified' : 'dead';
     }
-    const result = await checkUrl(resource.url);
-    return mapUrlStatus(result.status);
+    const probe = await probeUrl(resource.url, options.allowPrivate);
+    return mapUrlStatus(probe.status);
   } catch {
     return 'unverified';
   }

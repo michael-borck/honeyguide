@@ -1,5 +1,6 @@
 import { fetchJson } from '../candidates.js';
 import type { SearchProvider, WebSearchResult } from './types.js';
+import { clamp } from '../../util.js';
 
 interface BraveResult {
   title?: string;
@@ -35,8 +36,4 @@ export class BraveSearchProvider implements SearchProvider {
       .slice(0, count)
       .map((r) => ({ title: r.title, url: r.url, content: r.description || undefined }));
   }
-}
-
-function clamp(n: number, min: number, max: number): number {
-  return Math.max(min, Math.min(max, Number.isFinite(n) ? n : min));
 }

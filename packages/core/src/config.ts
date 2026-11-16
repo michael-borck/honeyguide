@@ -53,6 +53,13 @@ export interface PipelineConfig {
   /** Contact email passed to polite-pool APIs (Crossref/OpenAlex). */
   mailto?: string;
   /**
+   * Allow server-side fetches to private/reserved addresses (loopback, LAN,
+   * link-local). The desktop app sets this because it is a single-user
+   * localhost service; the hosted server leaves it false so user-influenced
+   * URLs (web results, rechecks) cannot reach internal networks (SSRF).
+   */
+  allowPrivateNetwork?: boolean;
+  /**
    * Full-page screenshot capture, ADR-0005 layer 3. Injected by the tier
    * that has a browser engine (desktop: Electron capturePage; self-host:
    * Playwright). Returns a data URL or undefined. Never set on the free
@@ -80,5 +87,6 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PipelineCon
     decisionApiKey: env.DECISION_API_KEY || undefined,
     alignmentReasons: env.HONEYGUIDE_ALIGNMENT_REASONS !== '0',
     mailto: env.HONEYGUIDE_MAILTO || undefined,
+    allowPrivateNetwork: env.HONEYGUIDE_ALLOW_PRIVATE === '1',
   };
 }

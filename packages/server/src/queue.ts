@@ -44,6 +44,8 @@ export interface SuggestRunner {
     byok: boolean,
     onProgress?: ProgressListener,
   ): Promise<SuggestResult>;
+  /** Drain the queue/worker/events; safe to call when unavailable. */
+  close(): Promise<void>;
 }
 
 export async function createRunner(
@@ -71,6 +73,7 @@ export async function createRunner(
 
   let queue: Queue<SuggestJob> | null = null;
   let events: QueueEvents | null = null;
+  let worker: Worker<SuggestJob, SuggestResult> | null = null;
   try {
     const url = new URL(redisUrl);
     const connection = {
@@ -85,7 +88,7 @@ export async function createRunner(
     await queue.waitUntilReady();
     events = new QueueEvents(QUEUE_NAME, { connection });
     await events.waitUntilReady();
-    new Worker<SuggestJob, SuggestResult>(
+    worker = new Worker<SuggestJob, SuggestResult>(
       QUEUE_NAME,
       async (job) => inline(job.data, defaults),
       { connection, concurrency },
@@ -108,6 +111,13 @@ export async function createRunner(
         removeOnFail: true,
       });
       return (await queued.waitUntilFinished(events, JOB_TIMEOUT_MS)) as SuggestResult;
+    },
+    async close() {
+      await Promise.allSettled([
+        worker?.close() ?? Promise.resolve(),
+        events?.close() ?? Promise.resolve(),
+        queue?.close() ?? Promise.resolve(),
+      ]);
     },
   };
 }

@@ -1,3 +1,4 @@
+import type { BriefAnswers } from './brief.js';
 import type { Outcome, Resource, SuggestResult } from './types.js';
 
 /**
@@ -17,6 +18,8 @@ export interface CollectionFile {
   createdAt: string;
   /** Unit outcomes the list was aligned to, when supplied (ADR-0017). */
   outcomes?: Outcome[];
+  /** Interview brief the list was generated with, when supplied (ADR-0018). */
+  brief?: BriefAnswers;
   result: SuggestResult;
 }
 
@@ -25,6 +28,7 @@ export function toCollectionFile(
   result: SuggestResult,
   outcomes: Outcome[] = [],
   now: Date = new Date(),
+  brief?: BriefAnswers,
 ): CollectionFile {
   return {
     kind: COLLECTION_KIND,
@@ -32,6 +36,7 @@ export function toCollectionFile(
     topic: topic.trim(),
     createdAt: now.toISOString(),
     ...(outcomes.length ? { outcomes } : {}),
+    ...(brief ? { brief } : {}),
     result: portable(result),
   };
 }
@@ -92,12 +97,15 @@ export function parseCollectionFile(input: string | unknown): CollectionFile {
         )
         .map((outcome) => ({ id: outcome.id, text: outcome.text }))
     : [];
+  const brief =
+    obj.brief && typeof obj.brief === 'object' ? (obj.brief as BriefAnswers) : undefined;
   return {
     kind: COLLECTION_KIND,
     schemaVersion: obj.schemaVersion,
     topic: typeof obj.topic === 'string' ? obj.topic : '',
     createdAt: typeof obj.createdAt === 'string' ? obj.createdAt : nowIso(),
     ...(outcomes.length ? { outcomes } : {}),
+    ...(brief ? { brief } : {}),
     result: obj.result as SuggestResult,
   };
 }

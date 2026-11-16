@@ -1,8 +1,8 @@
 import type { Candidate } from '../retrieval/candidates.js';
 import type { PipelineConfig } from '../config.js';
+import { ollamaGenerate } from './ollamaClient.js';
 
 const GENERATE_TIMEOUT_MS = 30_000;
-const DEFAULT_MODEL = 'llama3.1:8b';
 
 /** The rationale prompt, including optional teaching context (ADR-0018). */
 export function buildRationalePrompt(
@@ -54,24 +54,10 @@ export async function generateRationale(
   if (!config.ollamaUrl) throw new Error('no Ollama configured');
   const prompt = buildRationalePrompt(topic, candidate, stance, context);
 
-  const res = await fetch(`${config.ollamaUrl.replace(/\/$/, '')}/api/generate`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      ...(config.ollamaApiKey ? { authorization: `Bearer ${config.ollamaApiKey}` } : {}),
-    },
-    body: JSON.stringify({
-      model: config.ollamaModel ?? DEFAULT_MODEL,
-      prompt,
-      stream: false,
-      think: false,
-      options: { num_predict: 120, temperature: 0.3 },
-    }),
-    signal: AbortSignal.timeout(GENERATE_TIMEOUT_MS),
+  const text = await ollamaGenerate(config, prompt, {
+    numPredict: 120,
+    temperature: 0.3,
+    timeoutMs: GENERATE_TIMEOUT_MS,
   });
-  if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
-  const data = (await res.json()) as { response?: string };
-  const text = data.response?.trim();
-  if (!text) throw new Error('empty Ollama response');
   return text;
 }

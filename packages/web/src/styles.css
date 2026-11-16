@@ -3,8 +3,8 @@
   --bg: #f5f7fc;
   --card: #ffffff;
   --ink: #1a1f2e;
-  --muted: #5c6579;
-  --faint: #8a93a8;
+  --muted: #515a6e;
+  --faint: #667085;
   --line: #e3e7f1;
   --line-strong: #cfd6e6;
   --accent: #4054b2;
@@ -45,8 +45,8 @@
   --bg: #0b1020;
   --card: #151d3b;
   --ink: #e8ecf8;
-  --muted: #9aa5c8;
-  --faint: #7783a8;
+  --muted: #a8b3d6;
+  --faint: #8b97bd;
   --line: #243056;
   --line-strong: #34406e;
   --accent: #7fb2ff;
@@ -160,15 +160,6 @@ a {
 
 /* ---------- surfaces ---------- */
 
-.hg-panel {
-  margin: 16px 0;
-  padding: 20px 22px;
-  background: var(--card);
-  border: 1px solid var(--line);
-  border-radius: var(--radius);
-  box-shadow: var(--shadow);
-}
-
 .hg-panel-title {
   font-size: 1rem;
   font-weight: 700;
@@ -204,15 +195,6 @@ a {
   background: var(--error-bg);
   border: 1px solid var(--error-border);
   border-radius: 10px;
-  font-size: 13.5px;
-}
-
-.hg-loading {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin: 14px 0 0;
-  color: var(--muted);
   font-size: 13.5px;
 }
 
@@ -338,8 +320,7 @@ a {
 }
 
 .hg-input,
-.hg-textarea,
-.hg-select {
+.hg-textarea {
   width: 100%;
   padding: 10px 13px;
   color: var(--ink);
@@ -352,8 +333,7 @@ a {
 }
 
 .hg-input:focus,
-.hg-textarea:focus,
-.hg-select:focus {
+.hg-textarea:focus {
   outline: none;
   border-color: var(--accent);
   box-shadow: var(--ring);
@@ -378,6 +358,10 @@ a {
   padding: 10px 0 0;
   color: var(--muted);
   font-size: 13px;
+}
+
+.hg-detect-row {
+  margin-top: 8px;
 }
 
 .hg-control {
@@ -610,7 +594,7 @@ a {
   padding: 2px 9px;
   border: 1px solid;
   border-radius: 999px;
-  font-size: 11.5px;
+  font-size: 12px;
   font-weight: 600;
   line-height: 1.55;
   white-space: nowrap;
@@ -637,7 +621,7 @@ a {
 
 .hg-score {
   color: var(--faint);
-  font-size: 11px;
+  font-size: 12px;
 }
 
 .hg-confirm {

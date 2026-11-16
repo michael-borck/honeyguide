@@ -1,5 +1,6 @@
 import type { Candidate } from '../retrieval/candidates.js';
 import type { Reranker } from './reranker.js';
+import { postSystemOne } from './systemOneClient.js';
 
 const TIMEOUT_MS = 30_000;
 // Tev1 runs with a ~2k-token context and the docs advise short inputs, so
@@ -145,16 +146,10 @@ export class OllamaDecisionReranker implements Reranker {
     const { request, idToCandidate } = buildSystemOneRequest(topic, candidates, this.model);
     if (!Object.keys(request.questions).length) return new Map();
 
-    const headers: Record<string, string> = { 'content-type': 'application/json' };
-    if (this.apiKey) headers.authorization = `Bearer ${this.apiKey}`;
-
-    const res = await fetch(`${this.baseUrl.replace(/\/$/, '')}/v1/systemone`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify(request),
-      signal: AbortSignal.timeout(TIMEOUT_MS),
+    const response = await postSystemOne(this.baseUrl, request, {
+      apiKey: this.apiKey,
+      timeoutMs: TIMEOUT_MS,
     });
-    if (!res.ok) throw new Error(`Ollama System One HTTP ${res.status}`);
-    return parseSystemOneScores(await res.json(), idToCandidate);
+    return parseSystemOneScores(response, idToCandidate);
   }
 }

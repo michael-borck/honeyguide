@@ -1,5 +1,7 @@
 import type { Resource } from '../types.js';
 import type { PipelineConfig } from '../config.js';
+import { ollamaGenerate } from '../annotate/ollamaClient.js';
+import { mapLimit } from '../util.js';
 
 const TIMEOUT_MS = 12_000;
 // Alignment is capped at 12 resources; generating reasons for all of them
@@ -40,26 +42,12 @@ export async function generateAlignmentReason(
   config: PipelineConfig,
 ): Promise<string | undefined> {
   if (!config.ollamaUrl) return undefined;
-  const res = await fetch(`${config.ollamaUrl.replace(/\/$/, '')}/api/generate`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      ...(config.ollamaApiKey
-        ? { authorization: `Bearer ${config.ollamaApiKey}` }
-        : {}),
-    },
-    body: JSON.stringify({
-      model: config.ollamaModel ?? 'llama3.1:8b',
-      prompt: buildAlignmentReasonPrompt(topic, outcomeText, resource),
-      stream: false,
-      think: false,
-      options: { num_predict: 80, temperature: 0.2 },
-    }),
-    signal: AbortSignal.timeout(TIMEOUT_MS),
-  });
-  if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
-  const data = (await res.json()) as { response?: string };
-  const line = data.response?.trim().split('\n')[0]?.trim();
+  const response = await ollamaGenerate(
+    config,
+    buildAlignmentReasonPrompt(topic, outcomeText, resource),
+    { numPredict: 80, temperature: 0.2, timeoutMs: TIMEOUT_MS },
+  );
+  const line = response.split('\n')[0]?.trim();
   return line ? line.slice(0, 240) : undefined;
 }
 
@@ -91,19 +79,4 @@ export async function addAlignmentReasons(
       // reasons are a bonus, never a failure
     }
   });
-}
-
-async function mapLimit<T>(
-  items: T[],
-  limit: number,
-  fn: (item: T) => Promise<void>,
-): Promise<void> {
-  let next = 0;
-  const workers = Array.from({ length: Math.min(limit, items.length) }, async () => {
-    while (next < items.length) {
-      const i = next++;
-      await fn(items[i]);
-    }
-  });
-  await Promise.all(workers);
 }

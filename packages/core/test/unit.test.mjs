@@ -49,7 +49,10 @@ import {
   compileBrief,
   applyConstraints,
   buildRationalePrompt,
+  assertPublicUrl,
+  isPrivateAddress,
 } from '../dist/index.js';
+import { parseOutcomes as parseOutcomesFromWeb } from '../dist/web.js';
 
 const resource = (over = {}) => ({
   stance: 'supporting',
@@ -888,4 +891,51 @@ test('toMarkdown distinguishes generated rationale from extracted description', 
   assert.match(md, /Description \(extracted\): A survey paper\./);
   assert.match(md, /Degraded components this run: llm \(degraded\)/);
   assert.match(md, /none are LLM-generated citations/);
+});
+
+// --- SSRF guard (S1/S2) ---------------------------------------------------
+
+test('isPrivateAddress flags private, loopback and reserved ranges', () => {
+  for (const ip of [
+    '127.0.0.1',
+    '10.1.2.3',
+    '172.16.5.5',
+    '172.31.255.255',
+    '192.168.1.1',
+    '169.254.169.254',
+    '100.64.0.1',
+    '0.0.0.0',
+    '224.0.0.1',
+    '::1',
+    'fc00::1',
+    'fe80::1',
+  ]) {
+    assert.equal(isPrivateAddress(ip), true, `${ip} should be private`);
+  }
+  for (const ip of ['8.8.8.8', '1.1.1.1', '172.15.0.1', '172.32.0.1', '2606:4700::1111']) {
+    assert.equal(isPrivateAddress(ip), false, `${ip} should be public`);
+  }
+});
+
+test('assertPublicUrl rejects private literals, schemes and userinfo', async () => {
+  await assert.rejects(() => assertPublicUrl('file:///etc/passwd'), /scheme/);
+  await assert.rejects(() => assertPublicUrl('http://127.0.0.1/'), /private/);
+  await assert.rejects(() => assertPublicUrl('http://169.254.169.254/latest/meta-data'), /private/);
+  await assert.rejects(() => assertPublicUrl('http://user:pass@8.8.8.8/'), /credentials/);
+  await assert.rejects(() => assertPublicUrl('not a url'), /malformed/);
+
+  // Public literal passes without a DNS lookup.
+  const url = await assertPublicUrl('https://8.8.8.8/');
+  assert.equal(url.hostname, '8.8.8.8');
+
+  // allowPrivate keeps loopback usable (desktop / localhost installs).
+  const local = await assertPublicUrl('http://127.0.0.1:11434', true);
+  assert.equal(local.hostname, '127.0.0.1');
+});
+
+// --- Browser-safe entry shares the same implementation ---------------------
+
+test('web entry exposes the same parseOutcomes as core', () => {
+  const text = 'Learning outcomes\n1. Explain spaced repetition\n2. Evaluate resilience strategies';
+  assert.deepEqual(parseOutcomesFromWeb(text), parseOutcomes(text));
 });

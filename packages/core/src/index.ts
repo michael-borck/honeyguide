@@ -10,7 +10,7 @@
 export type * from './types.js';
 export { suggestResources } from './pipeline.js';
 export { suggestBatch, toBatchMarkdown, type BatchEntry } from './batch.js';
-export { recheckResources, toRecheckMarkdown, type RecheckEntry } from './recheck.js';
+export { recheckResources, toRecheckMarkdown, type RecheckEntry, type RecheckOptions } from './recheck.js';
 export { deriveCounterQueries, heuristicCounterQueries } from './retrieval/counterpoint.js';
 export {
   COLLECTION_KIND,
@@ -23,11 +23,21 @@ export {
 export { configFromEnv, type PipelineConfig } from './config.js';
 export {
   compileBrief,
+  briefSummary,
   applyConstraints,
   type BriefAnswers,
   type CompiledBrief,
 } from './brief.js';
 export { buildRationalePrompt } from './annotate/ollama.js';
+export { ollamaGenerate, type OllamaGenerateOptions } from './annotate/ollamaClient.js';
+export { postSystemOne } from './rank/systemOneClient.js';
+export { clamp, mapLimit } from './util.js';
+export {
+  assertPublicUrl,
+  safeFetch,
+  isPrivateAddress,
+  type SafeFetchOptions,
+} from './net/ssrf.js';
 export { toMarkdown } from './export/markdown.js';
 export { toCitations, formatApa, formatHarvard } from './export/citations.js';
 export { toLmsHtml } from './export/lmsHtml.js';
@@ -90,7 +100,11 @@ export {
   mapUrlStatus,
   verifyCandidate,
   verificationText,
+  probeUrl,
   type VerificationOutcome,
+  type UrlProbe,
+  type UrlProbeStatus,
+  type VerifyOptions,
 } from './verify/verify.js';
 export { mapUnpaywallResponse, lookupUnpaywall } from './enrich/unpaywall.js';
 export { deriveQuery, heuristicKeywords, extractPhrases } from './retrieval/query.js';

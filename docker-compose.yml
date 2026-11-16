@@ -34,14 +34,24 @@ services:
       - HONEYGUIDE_ALLOW_STREAM=${HONEYGUIDE_ALLOW_STREAM:-}
       - HONEYGUIDE_MAILTO=${HONEYGUIDE_MAILTO:-}
     depends_on:
-      - redis
+      redis:
+        condition: service_healthy
     restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    init: true
 
   redis:
     image: redis:7-alpine
     volumes:
       - redis-data:/data
     restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   # Optional general-web retrieval via SearXNG. Start with:
   #   docker compose --profile websearch up -d

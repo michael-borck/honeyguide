@@ -1,5 +1,6 @@
 import type { PipelineConfig } from '../config.js';
 import { extractPhrases } from './query.js';
+import { ollamaGenerate } from '../annotate/ollamaClient.js';
 
 const QUERY_TIMEOUT_MS = 20_000;
 
@@ -31,28 +32,17 @@ export function heuristicCounterQueries(topic: string): string[] {
 }
 
 async function llmCounterQueries(topic: string, config: PipelineConfig): Promise<string[]> {
-  const res = await fetch(`${config.ollamaUrl!.replace(/\/$/, '')}/api/generate`, {
-    method: 'POST',
-    headers: {
-      'content-type': 'application/json',
-      ...(config.ollamaApiKey ? { authorization: `Bearer ${config.ollamaApiKey}` } : {}),
-    },
-    body: JSON.stringify({
-      model: config.ollamaModel ?? 'llama3.1:8b',
-      prompt:
-        `A lecturer is teaching: "${topic.slice(0, 1000)}"\n\n` +
-        `Write 3 short search queries (3-7 words each) that would find ` +
-        `credible material which DISAGREES with, criticises, or complicates ` +
-        `this topic's usual framing. One query per line, queries only.`,
-      stream: false,
-      think: false,
-      options: { num_predict: 60, temperature: 0.4 },
-    }),
-    signal: AbortSignal.timeout(QUERY_TIMEOUT_MS),
+  const prompt =
+    `A lecturer is teaching: "${topic.slice(0, 1000)}"\n\n` +
+    `Write 3 short search queries (3-7 words each) that would find ` +
+    `credible material which DISAGREES with, criticises, or complicates ` +
+    `this topic's usual framing. One query per line, queries only.`;
+  const response = await ollamaGenerate(config, prompt, {
+    numPredict: 60,
+    temperature: 0.4,
+    timeoutMs: QUERY_TIMEOUT_MS,
   });
-  if (!res.ok) throw new Error(`Ollama HTTP ${res.status}`);
-  const data = (await res.json()) as { response?: string };
-  return (data.response ?? '')
+  return response
     .split('\n')
     .map((line) => line.replace(/^[\s\d.\-*"']+|["']$/g, '').trim())
     .filter((line) => line.length > 5 && line.length < 90)

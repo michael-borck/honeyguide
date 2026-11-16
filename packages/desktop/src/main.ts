@@ -47,7 +47,11 @@ async function captureScreenshot(url: string): Promise<string | undefined> {
 
 function startEmbeddedServer(): Promise<number> {
   const server = createApp({
-    pipelineDefaults: configFromEnv(),
+    // A single-user localhost service: private/LAN targets are the user's own
+    // machine, so the SSRF guard is relaxed here (the hosted server keeps it).
+    pipelineDefaults: { ...configFromEnv(), allowPrivateNetwork: true },
+    allowPrivateTargets: true,
+    rateLimit: false,
     run: (job, config) => suggestResources(job, config),
     runStream: (job, config, onProgress) => suggestResources(job, config, onProgress),
     queueAvailable: false,
