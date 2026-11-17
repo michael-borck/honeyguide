@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.4] - 2026-11-17
+
+### Security
+
+- Bump Electron 42.0.1 → 42.11.18, clearing the advisories against the shipped
+  desktop runtime (within major 42; no API change).
+- Upgrade Vite 5 → 8 and `@vitejs/plugin-react` 4 → 6, clearing the Vite/esbuild
+  build-tool advisories. Production dependencies remain vulnerability-free.
+
+### Added
+
+- CodeQL code-scanning workflow (JavaScript/TypeScript) on push, PR and a weekly
+  schedule.
+
+### Changed
+
+- Dependabot is alerts-only: scheduled version-update PRs and automated
+  security-fix PRs are off to avoid notification churn; dependencies are
+  updated deliberately.
+
 ## [0.7.3] - 2026-11-16
 
 ### Added
