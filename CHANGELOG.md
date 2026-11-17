@@ -7,6 +7,26 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.3] - 2026-11-16
+
+### Added
+
+- Server HTTP integration tests (previously none): health, security headers,
+  input validation, SSRF rejection, SSE streaming, batch gating, export,
+  recheck and rate limiting.
+
+### Changed
+
+- Upgrade to Express 5 (`@types/express` 5). The SPA fallback is now middleware
+  rather than the v4-only `app.get('*')`, and unknown `/api/*` routes return a
+  JSON 404.
+- JSON request bodies are capped at 2 MB (was 10 MB), shrinking the memory DoS
+  surface.
+- CI: GitHub Actions updated off the deprecated Node 20 runtime
+  (`checkout@v5`, `setup-node@v5`, current Docker and Pages actions,
+  `softprops/action-gh-release@v3`). Dependabot updates enabled for npm, actions
+  and Docker.
+
 ## [0.7.2] - 2026-11-16
 
 ### Security
