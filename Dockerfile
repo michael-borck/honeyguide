@@ -1,5 +1,5 @@
 # Honeyguide self-host image: server + built web UI in one container (ADR-0008).
-FROM node:22-alpine AS build
+FROM node:26-alpine AS build
 WORKDIR /app
 # The desktop workspace pulls in Electron; its binary is useless in a
 # server image, so skip the download.
@@ -9,7 +9,7 @@ RUN npm ci \
   && npm run build -w @michaelborck/honeyguide-core -w @michaelborck/honeyguide-server \
   && npm run build -w @michaelborck/honeyguide-web
 
-FROM node:22-alpine
+FROM node:26-alpine
 WORKDIR /app
 ENV NODE_ENV=production
 COPY --from=build --chown=node:node /app/package.json ./
