@@ -44,12 +44,13 @@ function metaContent(
 }
 
 function decodeEntities(s: string): string {
+  // Decode `&amp;` LAST so `&amp;lt;` becomes `&lt;` (a literal), never `<`.
   return s
-    .replace(/&amp;/g, '&')
     .replace(/&lt;/g, '<')
     .replace(/&gt;/g, '>')
     .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'");
+    .replace(/&#0?39;|&apos;/g, "'")
+    .replace(/&amp;/g, '&');
 }
 
 export async function fetchPageMeta(

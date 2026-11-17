@@ -308,13 +308,16 @@ export function createApp(options: AppOptions): express.Express {
       const topicLabel = input.slice(0, 120);
       switch (body.format) {
         case 'markdown':
+          res.setHeader('Content-Disposition', 'attachment; filename="honeyguide-resources.md"');
           res.type('text/markdown').send(toMarkdown(topicLabel, result));
           break;
         case 'html':
+          res.setHeader('Content-Disposition', 'attachment; filename="honeyguide-resources.html"');
           res.type('text/html').send(toLmsHtml(topicLabel, result));
           break;
         case 'apa':
         case 'harvard':
+          res.setHeader('Content-Disposition', 'attachment; filename="honeyguide-resources.txt"');
           res.type('text/plain').send(toCitations(result, body.format));
           break;
         default:
@@ -532,13 +535,16 @@ export function createApp(options: AppOptions): express.Express {
     const topic = typeof body.topic === 'string' ? body.topic.slice(0, 200) : 'Untitled';
     switch (body.format) {
       case 'markdown':
+        res.setHeader('Content-Disposition', 'attachment; filename="honeyguide-resources.md"');
         res.type('text/markdown').send(toMarkdown(topic, body.result));
         break;
       case 'html':
+        res.setHeader('Content-Disposition', 'attachment; filename="honeyguide-resources.html"');
         res.type('text/html').send(toLmsHtml(topic, body.result));
         break;
       case 'apa':
       case 'harvard':
+        res.setHeader('Content-Disposition', 'attachment; filename="honeyguide-resources.txt"');
         res.type('text/plain').send(toCitations(body.result, body.format));
         break;
       default:

@@ -58,7 +58,7 @@ function heading(line: string): string {
 
 function stripPrefix(line: string): string {
   return line
-    .replace(/^\s*(?:[-*•·▪]|\d+(?:\.\d+)*[.)]?)\s*/, '')
+    .replace(/^\s*(?:[-*•·▪]|\d+(?:\.\d+){0,4}[.)]?)\s*/, '')
     .replace(/^(?:LO|ILO|CLO|ULO|SLO)\s*\d+\s*[:.)-]?\s*/i, '')
     .replace(/^students?\s+(?:will|should)\s+be\s+able\s+to\s+/i, '')
     .replace(/^students?\s+can\s+/i, '')
