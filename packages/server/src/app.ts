@@ -157,7 +157,9 @@ export function createApp(options: AppOptions): express.Express {
     app.use('/api', limiter);
   }
 
-  app.use(express.json({ limit: '10mb' }));
+  // JSON bodies are topics/outcomes/extracted text (the extractor caps at
+  // 200k chars), so 2 MB is ample; a smaller cap shrinks the memory DoS surface.
+  app.use(express.json({ limit: '2mb' }));
 
   /** Log the real error server-side; never leak internals to the client. */
   function fail(res: express.Response, error: unknown): void {
@@ -545,7 +547,18 @@ export function createApp(options: AppOptions): express.Express {
   });
 
   app.use(express.static(options.webDistPath));
-  app.get('*', (_req, res) => {
+  // SPA fallback. Implemented as middleware rather than `app.get('*')` so it
+  // works unchanged on Express 5 (whose path syntax no longer accepts a bare
+  // '*'). Unknown /api routes get a JSON 404 instead of the HTML shell.
+  app.use((req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      next();
+      return;
+    }
+    if (req.path.startsWith('/api/')) {
+      res.status(404).json({ error: 'Not found' });
+      return;
+    }
     res.sendFile(path.join(options.webDistPath, 'index.html'), (err) => {
       if (err) res.status(404).send('Web UI not bundled in this build.');
     });
