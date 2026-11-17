@@ -20,7 +20,7 @@
   "dependencies": {
     "@michaelborck/honeyguide-core": "*",
     "@michaelborck/honeyguide-server": "*",
-    "electron-updater": "^6.3.0"
+    "electron-updater": "^6.8.11"
   },
   "devDependencies": {
     "@electron/notarize": "^2.5.0",
