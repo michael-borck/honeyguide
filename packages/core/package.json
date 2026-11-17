@@ -31,7 +31,7 @@
     "test": "node --test test/*.test.mjs"
   },
   "dependencies": {
-    "@michaelborck/cite-sight-core": "^0.8.7"
+    "@michaelborck/cite-sight-core": "^0.13.3"
   },
   "devDependencies": {
     "typescript": "^5.5.0"
