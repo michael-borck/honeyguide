@@ -37,7 +37,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
       - run: npm ci
       - run: npm run build
       - run: npm test
@@ -52,7 +52,7 @@ jobs:
       - uses: actions/checkout@v5
       - uses: actions/setup-node@v5
         with:
-          node-version: 22
+          node-version: 24
           registry-url: https://registry.npmjs.org
       - run: npm ci
       - run: npm run build
@@ -123,7 +123,7 @@ jobs:
     uses: michael-borck/app-hq/.github/workflows/electron-release.yml@main
     with:
       product-name: Honeyguide
-      node-version: '22'
+      node-version: '24'
       preflight-command: npm run build && npm test
       build-command: npm run build
       package-command: |

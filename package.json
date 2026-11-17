@@ -10,7 +10,7 @@
     "url": "https://github.com/michael-borck/honeyguide.git"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=24"
   },
   "workspaces": [
     "packages/*"

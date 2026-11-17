@@ -164,7 +164,7 @@ npm run build
 npm test
 ```
 
-Requires Node 20+.
+Requires Node 24 LTS+ (see `.nvmrc`).
 
 ## License
 
