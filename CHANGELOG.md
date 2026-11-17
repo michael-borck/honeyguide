@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.5] - 2026-11-17
+
+### Changed
+
+- Moved the project to **Node 24 LTS**: `engines` `>=24`, `.nvmrc`, the Docker
+  base image (`node:24-alpine`), and CI/release/notarize now use Node 24.
+  Drops EOL Node 20.
+- Added `AGENTS.md` and updated `CONTRIBUTING.md` with a Node 24 / current
+  GitHub Actions policy so generated workflows stop defaulting to Node 20.
+
 ## [0.7.4] - 2026-11-17
 
 ### Security

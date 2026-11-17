@@ -13,8 +13,15 @@ npm run build
 npm test
 ```
 
-Requires Node 20+. The repo is an npm workspaces monorepo — see the
-[README](README.md#architecture) for the package layout.
+Requires Node 24 LTS (see `.nvmrc`). The repo is an npm workspaces monorepo —
+see the [README](README.md#architecture) for the package layout.
+
+## Toolchain versions
+
+- Target **Node 24 LTS**; the Docker image and CI run on Node 24.
+- Use **current GitHub Actions majors** — e.g. `actions/checkout@v5+`,
+  `actions/setup-node@v5+`, `softprops/action-gh-release@v3`.
+- Do **not** use `node-version: 20` or `node:20` base images: Node 20 is EOL.
 
 ## Before you write code
 
