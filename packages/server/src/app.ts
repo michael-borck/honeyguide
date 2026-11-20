@@ -88,6 +88,12 @@ interface SuggestBody {
    */
   provider?: { url?: string; apiKey?: string; model?: string };
   youtubeApiKey?: string;
+  /** Per-request web-search credentials and fallback preference. */
+  braveApiKey?: string;
+  serperApiKey?: string;
+  searxngUrl?: string;
+  searchFallbackEnabled?: boolean;
+  searchFallbackOrder?: string;
   /** Optional per-request local embeddings for semantic re-ranking (ADR-0015). */
   embeddings?: { url?: string; model?: string };
   /** Optional per-request local System One decision model (ADR-0016). */
@@ -264,9 +270,12 @@ export function createApp(options: AppOptions): express.Express {
   async function buildConfig(
     body: SuggestBody,
   ): Promise<{ pipelineConfig: PipelineConfig; byok: boolean }> {
-    const clientUrls = [body.provider?.url, body.decision?.url, body.embeddings?.url].filter(
-      Boolean,
-    ) as string[];
+    const clientUrls = [
+      body.provider?.url,
+      body.decision?.url,
+      body.embeddings?.url,
+      body.searxngUrl,
+    ].filter(Boolean) as string[];
     for (const url of clientUrls) {
       try {
         await assertPublicUrl(url, options.allowPrivateTargets ?? false);
@@ -437,7 +446,13 @@ export function createApp(options: AppOptions): express.Express {
   });
 
   function mergeConfig(body: SuggestBody): { pipelineConfig: PipelineConfig; byok: boolean } {
-    const byok = Boolean(body.provider?.url || body.youtubeApiKey);
+    const byok = Boolean(
+      body.provider?.url ||
+        body.youtubeApiKey ||
+        body.braveApiKey ||
+        body.serperApiKey ||
+        body.searxngUrl,
+    );
     return {
       byok,
       pipelineConfig: {
@@ -450,6 +465,15 @@ export function createApp(options: AppOptions): express.Express {
             }
           : {}),
         ...(body.youtubeApiKey ? { youtubeApiKey: body.youtubeApiKey } : {}),
+        ...(body.braveApiKey ? { braveApiKey: body.braveApiKey } : {}),
+        ...(body.serperApiKey ? { serperApiKey: body.serperApiKey } : {}),
+        ...(body.searxngUrl ? { searxngUrl: body.searxngUrl } : {}),
+        ...(typeof body.searchFallbackEnabled === 'boolean'
+          ? { searchFallbackEnabled: body.searchFallbackEnabled }
+          : {}),
+        ...(body.searchFallbackOrder
+          ? { searchFallbackOrder: body.searchFallbackOrder }
+          : {}),
         ...(body.decision?.url && body.rerank !== 'off'
           ? {
               decisionUrl: body.decision.url,

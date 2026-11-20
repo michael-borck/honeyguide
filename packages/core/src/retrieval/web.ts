@@ -18,7 +18,7 @@ export async function retrieveWeb(
       authors: [],
       year: null,
       description: r.content || undefined,
-      origin: provider.name,
+      origin: r.provider ?? provider.name,
       databaseAttested: false,
     }),
   );

@@ -16,6 +16,12 @@ export interface Settings {
   apiKey: string;
   model: string;
   youtubeApiKey: string;
+  /** Web-search providers. Keys stay in sessionStorage; URLs in localStorage. */
+  braveApiKey: string;
+  serperApiKey: string;
+  searxngUrl: string;
+  searchFallbackEnabled: boolean;
+  searchFallbackOrder: string;
   /** Optional local System One decision model for re-ranking (ADR-0016). */
   decisionUrl: string;
   decisionModel: string;
@@ -35,7 +41,7 @@ export interface DetectedModels {
   embeddingModels: string[];
 }
 
-const SECRET_KEYS = ['apiKey', 'youtubeApiKey'] as const;
+const SECRET_KEYS = ['apiKey', 'youtubeApiKey', 'braveApiKey', 'serperApiKey'] as const;
 type SecretKey = (typeof SECRET_KEYS)[number];
 
 export const EMPTY_SETTINGS: Settings = {
@@ -43,6 +49,11 @@ export const EMPTY_SETTINGS: Settings = {
   apiKey: '',
   model: '',
   youtubeApiKey: '',
+  braveApiKey: '',
+  serperApiKey: '',
+  searxngUrl: '',
+  searchFallbackEnabled: true,
+  searchFallbackOrder: 'brave,serper,searxng',
   decisionUrl: '',
   decisionModel: 'tev1:0.8b',
   embeddingUrl: '',

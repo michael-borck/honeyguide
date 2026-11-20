@@ -7,6 +7,16 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+
+- Automatic web-search fallback across SearXNG, Brave and Serper, with a
+  configurable order (`SEARCH_FALLBACK_ORDER`) and off switch
+  (`SEARCH_FALLBACK_ENABLED=0`). Server default remains SearXNG-first; the
+  desktop Settings panel defaults to Brave-first.
+- Brave, Serper and SearXNG fields, fallback controls, and usage/cost links in
+  the desktop/web Settings panel. Per-request search keys bypass the queue and
+  are never persisted on the server.
+
 ## [0.7.5] - 2026-11-17
 
 ### Changed

@@ -96,7 +96,9 @@ Europe PMC and arXiv; set `SEMANTIC_SCHOLAR_API_KEY` to lift Semantic
 Scholar's keyless throttling. Set `YOUTUBE_API_KEY` for video results, and
 enable general-web results with the bundled SearXNG metasearch service
 (or a keyed provider — `BRAVE_API_KEY` / `SERPER_API_KEY` — if metasearch is
-blocked):
+blocked). Search tries the configured providers in order and falls through if
+one fails or returns nothing. The server default is `searxng,brave,serper`;
+the desktop Settings panel defaults to `brave,serper,searxng`:
 
 ```bash
 curl -fsSL --create-dirs -o deploy/searxng/settings.yml \

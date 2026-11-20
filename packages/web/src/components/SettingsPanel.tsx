@@ -148,6 +148,84 @@ export function SettingsPanel({
       </label>
 
       <label>
+        Brave API key (optional)
+        <input
+          type="password"
+          value={draft.braveApiKey}
+          onChange={(e) => setDraft({ ...draft, braveApiKey: e.target.value })}
+          placeholder="Brave Search API key"
+          autoComplete="off"
+        />
+      </label>
+
+      <label>
+        Serper API key (optional)
+        <input
+          type="password"
+          value={draft.serperApiKey}
+          onChange={(e) => setDraft({ ...draft, serperApiKey: e.target.value })}
+          placeholder="Serper API key"
+          autoComplete="off"
+        />
+      </label>
+
+      <label>
+        SearXNG URL (optional)
+        <input
+          type="text"
+          value={draft.searxngUrl}
+          onChange={(e) => setDraft({ ...draft, searxngUrl: e.target.value })}
+          placeholder="https://your-searxng-instance.example.com"
+        />
+      </label>
+
+      <label>
+        <input
+          type="checkbox"
+          checked={draft.searchFallbackEnabled}
+          onChange={(e) => setDraft({ ...draft, searchFallbackEnabled: e.target.checked })}
+        />{' '}
+        Automatic search fallback
+      </label>
+      <p className="hg-help">
+        Try the next configured provider when one fails or returns nothing.
+      </p>
+
+      <label>
+        Fallback order
+        <input
+          type="text"
+          value={draft.searchFallbackOrder}
+          onChange={(e) => setDraft({ ...draft, searchFallbackOrder: e.target.value })}
+          disabled={!draft.searchFallbackEnabled}
+          placeholder="brave,serper,searxng"
+        />
+      </label>
+      <p className="hg-help">
+        Comma-separated. Remove a provider to disable it. The first configured
+        provider runs first.
+      </p>
+
+      <p className="hg-help">
+        <strong>Search usage and costs.</strong> Brave: $5 free credit each month, then $5 per
+        1,000 requests (
+        <a
+          href="https://api-dashboard.search.brave.com/app/keys"
+          target="_blank"
+          rel="noopener noreferrer"
+        >
+          dashboard
+        </a>
+        ). Serper: 2,500 free queries, then prepaid credits (
+        <a href="https://serper.dev/dashboard" target="_blank" rel="noopener noreferrer">
+          dashboard
+        </a>
+        ). SearXNG is free to self-host, but upstream engines can rate-limit. Queries leave this
+        device and go to the selected provider. Check the provider dashboard for current usage
+        and billing.
+      </p>
+
+      <label>
         Re-ranking (how results are ordered)
         <select
           value={draft.rerankMode}

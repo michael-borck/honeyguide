@@ -28,11 +28,14 @@ The audit in `docs/audit.md` records both as high-severity findings (F2, F3).
    normalised title; duplicate records are merged to fill missing metadata
    (abstract, venue, licensing, DOI). Crossref via `cite-sight-core` remains
    the last-resort fallback when every source returns nothing.
-2. **Web search is a provider interface.** `SearchProvider` exposes a single
-   `search(query, options)` contract. Adapters for SearXNG, Brave and Serper
-   are selected by configuration with the precedence
-   `SEARXNG_URL` → `BRAVE_API_KEY` → `SERPER_API_KEY`. With none configured the
-   web component reports unavailable, as before.
+2. **Web search is a provider interface with an ordered fallback chain.**
+   `SearchProvider` exposes a single `search(query, options)` contract.
+   Adapters for SearXNG, Brave and Serper are tried in a configurable order.
+   The server default is `searxng,brave,serper`; the desktop Settings panel
+   sends `brave,serper,searxng` by default. An empty or failed provider falls
+   through to the next one. With none configured the web component reports
+   unavailable, as before. *Updated 2026-11-20: previously this chose one
+   provider by precedence.*
 3. **New optional configuration.** `SEMANTIC_SCHOLAR_API_KEY` lifts the keyless
    rate limits on Semantic Scholar; `BRAVE_API_KEY` and `SERPER_API_KEY` enable
    the respective web providers. All are optional and absent by default.

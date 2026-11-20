@@ -20,6 +20,17 @@ export interface PipelineConfig {
   searxngUrl?: string;
   braveApiKey?: string;
   serperApiKey?: string;
+  /**
+   * Try the next configured web-search provider when one fails or returns
+   * nothing. On by default; set SEARCH_FALLBACK_ENABLED=0 to keep only the
+   * first configured provider.
+   */
+  searchFallbackEnabled?: boolean;
+  /**
+   * Comma-separated order. Server default: searxng,brave,serper (ADR-0013).
+   * The desktop Settings panel sends brave,serper,searxng by default.
+   */
+  searchFallbackOrder?: string;
   /** Semantic Scholar API key; lifts keyless throttling on paper search. */
   semanticScholarApiKey?: string;
   /**
@@ -78,6 +89,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env): PipelineCon
     searxngUrl: env.SEARXNG_URL || undefined,
     braveApiKey: env.BRAVE_API_KEY || undefined,
     serperApiKey: env.SERPER_API_KEY || undefined,
+    searchFallbackEnabled: env.SEARCH_FALLBACK_ENABLED !== '0',
+    searchFallbackOrder: env.SEARCH_FALLBACK_ORDER || undefined,
     semanticScholarApiKey: env.SEMANTIC_SCHOLAR_API_KEY || undefined,
     embeddingUrl: env.EMBEDDING_URL || undefined,
     embeddingModel: env.EMBEDDING_MODEL || 'nomic-embed-text',

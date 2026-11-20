@@ -225,6 +225,13 @@ export function App() {
           }
         : {}),
       ...(settings.youtubeApiKey ? { youtubeApiKey: settings.youtubeApiKey } : {}),
+      ...(settings.braveApiKey ? { braveApiKey: settings.braveApiKey } : {}),
+      ...(settings.serperApiKey ? { serperApiKey: settings.serperApiKey } : {}),
+      ...(settings.searxngUrl ? { searxngUrl: settings.searxngUrl } : {}),
+      searchFallbackEnabled: settings.searchFallbackEnabled,
+      ...(settings.searchFallbackOrder
+        ? { searchFallbackOrder: settings.searchFallbackOrder }
+        : {}),
       ...rerankFields(),
       ...(outcomes.length ? { outcomes } : {}),
       ...((compiledBrief ? compiledBrief.counterpoint : counterpoint)
