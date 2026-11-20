@@ -61,7 +61,13 @@ export const EMPTY_SETTINGS: Settings = {
   rerankMode: 'auto',
 };
 
-export const SERVER_DEFAULTS: Settings = { ...EMPTY_SETTINGS, rerankMode: 'server' };
+export const SERVER_DEFAULTS: Settings = {
+  ...EMPTY_SETTINGS,
+  rerankMode: 'server',
+  // Empty means "do not send an order", so the server's
+  // SEARCH_FALLBACK_ORDER (SearXNG-first by default) applies.
+  searchFallbackOrder: '',
+};
 
 function readJson<T>(storage: Storage, key: string): T | null {
   try {

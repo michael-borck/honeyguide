@@ -362,8 +362,8 @@ export function SettingsPanel({
         </button>
       </div>
       <p className="hg-help">
-        Use server defaults clears provider keys, the YouTube key and all model overrides in this
-        browser.
+        Use server defaults clears provider keys, the YouTube and search keys, and all model and
+        search-order overrides in this browser.
       </p>
     </div>
   );
