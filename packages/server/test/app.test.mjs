@@ -181,3 +181,80 @@ test('rate limiting returns 429 once the per-IP cap is exceeded', async () => {
     assert.equal(third.status, 429);
   });
 });
+
+test('hosted search limit returns 429 for server-owned search', async () => {
+  await withServer(
+    {
+      pipelineDefaults: { searxngUrl: 'http://searxng:8080' },
+      searchLimit: { windowMs: 60_000, max: 2 },
+    },
+    async (base) => {
+      const first = await post(base, '/api/suggest', { input: 'a' });
+      const second = await post(base, '/api/suggest', { input: 'b' });
+      const third = await post(base, '/api/suggest', { input: 'c' });
+
+      assert.equal(first.status, 200);
+      assert.equal(second.status, 200);
+      assert.equal(third.status, 429);
+      assert.match((await third.json()).error, /Search limit reached/);
+      assert.ok(third.headers.get('retry-after'));
+    },
+  );
+});
+
+test('BYO search keys bypass the hosted search limit', async () => {
+  await withServer(
+    {
+      pipelineDefaults: { searxngUrl: 'http://searxng:8080' },
+      searchLimit: { windowMs: 60_000, max: 1 },
+    },
+    async (base) => {
+      const byokOne = await post(base, '/api/suggest', {
+        input: 'a',
+        braveApiKey: 'user-key',
+      });
+      const byokTwo = await post(base, '/api/suggest', {
+        input: 'b',
+        braveApiKey: 'user-key',
+      });
+      const serverOne = await post(base, '/api/suggest', { input: 'c' });
+      const serverTwo = await post(base, '/api/suggest', { input: 'd' });
+
+      assert.equal(byokOne.status, 200);
+      assert.equal(byokTwo.status, 200);
+      assert.equal(serverOne.status, 200);
+      assert.equal(serverTwo.status, 429);
+    },
+  );
+});
+
+test('health advertises the hosted search limit', async () => {
+  await withServer(
+    {
+      pipelineDefaults: { searxngUrl: 'http://searxng:8080' },
+      searchLimit: { windowMs: 60_000, max: 7 },
+    },
+    async (base) => {
+      const res = await fetch(`${base}/api/health`);
+      const body = await res.json();
+      assert.deepEqual(body.limits.search, { windowMs: 60_000, max: 7 });
+    },
+  );
+});
+
+test('batch counts one search token per topic', async () => {
+  await withServer(
+    {
+      allowBatch: true,
+      pipelineDefaults: { searxngUrl: 'http://searxng:8080' },
+      searchLimit: { windowMs: 60_000, max: 2 },
+    },
+    async (base) => {
+      const first = await post(base, '/api/batch', { topics: ['a', 'b'] });
+      const second = await post(base, '/api/batch', { topics: ['c'] });
+
+      assert.equal(first.status, 200);
+      assert.equal(second.status, 429);
+    },
+  );
+});

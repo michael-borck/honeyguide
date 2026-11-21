@@ -35,7 +35,9 @@ The audit in `docs/audit.md` records both as high-severity findings (F2, F3).
    sends `brave,serper,searxng` by default. An empty or failed provider falls
    through to the next one. With none configured the web component reports
    unavailable, as before. *Updated 2026-11-20: previously this chose one
-   provider by precedence.*
+   provider by precedence. Identical queries are cached for 10 minutes. The
+   hosted server caps server-key searches per IP and advertises the limit in
+   `/api/health`; BYO search keys bypass the cap.*
 3. **New optional configuration.** `SEMANTIC_SCHOLAR_API_KEY` lifts the keyless
    rate limits on Semantic Scholar; `BRAVE_API_KEY` and `SERPER_API_KEY` enable
    the respective web providers. All are optional and absent by default.

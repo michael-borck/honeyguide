@@ -9,12 +9,14 @@ import {
 export function SettingsPanel({
   settings,
   detected,
+  searchLimit,
   onDetected,
   onSave,
   onClose,
 }: {
   settings: Settings;
   detected: DetectedModels | null;
+  searchLimit?: { windowMs: number; max: number } | null;
   onDetected: (detected: DetectedModels) => void;
   onSave: (s: Settings) => void;
   onClose: () => void;
@@ -224,6 +226,14 @@ export function SettingsPanel({
         device and go to the selected provider. Check the provider dashboard for current usage
         and billing.
       </p>
+      {searchLimit && (
+        <p className="hg-help">
+          This server allows {searchLimit.max} search request
+          {searchLimit.max === 1 ? '' : 's'} per{' '}
+          {Math.max(1, Math.round(searchLimit.windowMs / 1000))} seconds when using its own
+          keys. Bringing your own Brave, Serper or SearXNG credentials bypasses this limit.
+        </p>
+      )}
 
       <label>
         Re-ranking (how results are ordered)

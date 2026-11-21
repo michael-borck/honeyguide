@@ -5,6 +5,10 @@ export interface Health {
   components?: Record<string, string>;
   capabilities?: Record<string, boolean>;
   sources?: Record<string, string | string[]>;
+  limits?: {
+    requests?: { windowMs: number; max: number } | null;
+    search?: { windowMs: number; max: number } | null;
+  };
 }
 
 export interface OllamaDetection {

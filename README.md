@@ -98,7 +98,10 @@ enable general-web results with the bundled SearXNG metasearch service
 (or a keyed provider — `BRAVE_API_KEY` / `SERPER_API_KEY` — if metasearch is
 blocked). Search tries the configured providers in order and falls through if
 one fails or returns nothing. The server default is `searxng,brave,serper`;
-the desktop Settings panel defaults to `brave,serper,searxng`:
+the desktop Settings panel defaults to `brave,serper,searxng`. Identical
+queries are cached for 10 minutes. Hosted instances cap server-key searches at
+20 per minute per IP (`HONEYGUIDE_SEARCH_LIMIT`); bringing your own Brave,
+Serper or SearXNG credentials bypasses that cap:
 
 ```bash
 curl -fsSL --create-dirs -o deploy/searxng/settings.yml \

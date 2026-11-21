@@ -2,6 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
   FallbackSearchProvider,
+  __clearSearchCacheForTests,
   createSearchProviders,
   parseSearchOrder,
   runSearchFallback,
@@ -119,6 +120,27 @@ test('runSearchFallback throws only when every provider fails', async () => {
     provider('serper', async () => []),
   ];
   assert.deepEqual(await runSearchFallback(oneEmpty, 'query', 5), []);
+});
+
+test('FallbackSearchProvider caches identical searches', async () => {
+  __clearSearchCacheForTests();
+  let calls = 0;
+  const chain = new FallbackSearchProvider(
+    [
+      provider('brave', async () => {
+        calls += 1;
+        return [source('A', 'https://example.com/a')];
+      }),
+    ],
+    'test-cache',
+  );
+
+  await chain.search('Same  query', { limit: 3 });
+  await chain.search('same query', { limit: 3 });
+  assert.equal(calls, 1);
+
+  await chain.search('different query', { limit: 3 });
+  assert.equal(calls, 2);
 });
 
 test('FallbackSearchProvider reports the first provider name', async () => {

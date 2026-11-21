@@ -74,6 +74,13 @@ export interface AppOptions {
    * to 120 requests/minute when omitted.
    */
   rateLimit?: false | { windowMs: number; max: number };
+  /**
+   * Per-IP cap on requests that use this server's own web-search provider.
+   * Requests that bring their own Brave/Serper/SearXNG credentials skip it.
+   * Defaults to 20/minute when the server has a search provider configured.
+   * Pass `false` to disable (desktop).
+   */
+  searchLimit?: false | { windowMs: number; max: number };
 }
 
 interface SuggestBody {
@@ -110,6 +117,45 @@ interface SuggestBody {
 
 /** A client error whose message is safe to return to the caller. */
 class BadRequest extends Error {}
+
+interface WindowQuotaResult {
+  allowed: boolean;
+  remaining: number;
+  retryAfterMs: number;
+}
+
+/** Small fixed-window quota. Kept in-process; the hosted tier is single-node. */
+function createWindowQuota(windowMs: number, max: number) {
+  const entries = new Map<string, { count: number; resetAt: number }>();
+  return {
+    consume(key: string, cost = 1): WindowQuotaResult {
+      const now = Date.now();
+      let entry = entries.get(key);
+      if (!entry || now >= entry.resetAt) {
+        entry = { count: 0, resetAt: now + windowMs };
+        entries.set(key, entry);
+      }
+      if (entry.count + cost > max) {
+        return {
+          allowed: false,
+          remaining: 0,
+          retryAfterMs: Math.max(0, entry.resetAt - now),
+        };
+      }
+      entry.count += cost;
+      if (entries.size > 5000) {
+        for (const [keyName, value] of entries) {
+          if (value.resetAt <= now) entries.delete(keyName);
+        }
+      }
+      return {
+        allowed: true,
+        remaining: Math.max(0, max - entry.count),
+        retryAfterMs: 0,
+      };
+    },
+  };
+}
 
 export function createApp(options: AppOptions): express.Express {
   const app = express();
@@ -167,6 +213,64 @@ export function createApp(options: AppOptions): express.Express {
   // 200k chars), so 2 MB is ample; a smaller cap shrinks the memory DoS surface.
   app.use(express.json({ limit: '2mb' }));
 
+  const defaultSearchMax = Number(process.env.HONEYGUIDE_SEARCH_LIMIT ?? 20);
+  const defaultSearchWindow = Number(
+    process.env.HONEYGUIDE_SEARCH_LIMIT_WINDOW_MS ?? 60_000,
+  );
+  const hasServerSearch = Boolean(
+    options.pipelineDefaults.searxngUrl ||
+      options.pipelineDefaults.braveApiKey ||
+      options.pipelineDefaults.serperApiKey,
+  );
+  const searchLimitConfig =
+    options.searchLimit === false
+      ? null
+      : (options.searchLimit ??
+        (hasServerSearch
+          ? {
+              windowMs: Number.isFinite(defaultSearchWindow)
+                ? defaultSearchWindow
+                : 60_000,
+              max: Number.isFinite(defaultSearchMax) ? defaultSearchMax : 20,
+            }
+          : null));
+  const searchQuota = searchLimitConfig
+    ? createWindowQuota(searchLimitConfig.windowMs, searchLimitConfig.max)
+    : null;
+
+  function isByokSearch(body: SuggestBody | undefined): boolean {
+    return Boolean(body?.braveApiKey || body?.serperApiKey || body?.searxngUrl);
+  }
+
+  function enforceSearchQuota(
+    req: express.Request,
+    res: express.Response,
+    cost = 1,
+  ): boolean {
+    if (!searchQuota) return true;
+    if (isByokSearch(req.body as SuggestBody | undefined)) return true;
+    const result = searchQuota.consume(req.ip ?? 'unknown', Math.max(1, cost));
+    if (result.allowed) return true;
+    const retryAfter = Math.max(1, Math.ceil(result.retryAfterMs / 1000));
+    res.setHeader('Retry-After', String(retryAfter));
+    res.status(429).json({
+      error: `Search limit reached. Try again in ${retryAfter} seconds.`,
+      retryAfterSeconds: retryAfter,
+    });
+    return false;
+  }
+
+  if (searchLimitConfig) {
+    app.use(['/api/suggest', '/api/suggest/stream'], (req, res, next) => {
+      if (enforceSearchQuota(req, res, 1)) next();
+    });
+    app.use('/api/batch', (req, res, next) => {
+      const body = req.body as { topics?: unknown } | undefined;
+      const cost = Array.isArray(body?.topics) ? Math.max(1, body.topics.length) : 1;
+      if (enforceSearchQuota(req, res, cost)) next();
+    });
+  }
+
   /** Log the real error server-side; never leak internals to the client. */
   function fail(res: express.Response, error: unknown): void {
     if (error instanceof BadRequest) {
@@ -193,6 +297,14 @@ export function createApp(options: AppOptions): express.Express {
         batch: Boolean(options.allowBatch),
         screenshots: Boolean(options.screenshot),
         streaming: Boolean(options.runStream),
+      },
+      limits: {
+        requests: rateLimitConfig
+          ? { windowMs: rateLimitConfig.windowMs, max: rateLimitConfig.max }
+          : null,
+        search: searchLimitConfig
+          ? { windowMs: searchLimitConfig.windowMs, max: searchLimitConfig.max }
+          : null,
       },
       // Which retrieval sources this instance will actually try (ADR-0013).
       sources: {

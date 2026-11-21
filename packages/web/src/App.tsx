@@ -429,6 +429,7 @@ export function App() {
           <SettingsPanel
             settings={settings}
             detected={detectedModels}
+            searchLimit={health?.limits?.search ?? null}
             onDetected={setDetectedModels}
             onSave={storeSettings}
             onClose={() => setShowSettings(false)}

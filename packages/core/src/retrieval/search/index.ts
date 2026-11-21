@@ -22,6 +22,26 @@ export const DEFAULT_SEARCH_FALLBACK_ORDER = 'searxng,brave,serper';
 
 const PROVIDER_NAMES: WebSearchProviderName[] = ['brave', 'serper', 'searxng'];
 
+const SEARCH_CACHE_TTL_MS = 10 * 60 * 1000;
+const SEARCH_CACHE_MAX = 100;
+const searchCache = new Map<
+  string,
+  { at: number; results: WebSearchResult[] }
+>();
+
+export function __clearSearchCacheForTests(): void {
+  searchCache.clear();
+}
+
+function fingerprint(value: string): string {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return (hash >>> 0).toString(36);
+}
+
 export function parseSearchOrder(value: string | undefined): WebSearchProviderName[] {
   const seen = new Set<string>();
   const names: WebSearchProviderName[] = [];
@@ -131,16 +151,39 @@ export async function runSearchFallback(
 export class FallbackSearchProvider implements SearchProvider {
   readonly name: WebSearchProviderName;
 
-  constructor(private readonly providers: SearchProvider[]) {
+  constructor(
+    private readonly providers: SearchProvider[],
+    private readonly cacheKey?: string,
+  ) {
     this.name = providers[0]?.name ?? 'searxng';
   }
 
-  search(
+  async search(
     query: string,
     options: { limit?: number } = {},
   ): Promise<WebSearchResult[]> {
     const limit = clamp(options.limit ?? 8, 1, 20);
-    return runSearchFallback(this.providers, query, limit);
+    const key = this.cacheKey
+      ? `${this.cacheKey}|${query.toLowerCase().trim().replace(/\s+/g, ' ')}|${limit}`
+      : null;
+
+    if (key) {
+      const cached = searchCache.get(key);
+      if (cached && Date.now() - cached.at < SEARCH_CACHE_TTL_MS) {
+        return cached.results;
+      }
+    }
+
+    const results = await runSearchFallback(this.providers, query, limit);
+
+    if (key && results.length > 0) {
+      if (searchCache.size >= SEARCH_CACHE_MAX) {
+        const oldest = searchCache.keys().next().value;
+        if (oldest) searchCache.delete(oldest);
+      }
+      searchCache.set(key, { at: Date.now(), results });
+    }
+    return results;
   }
 }
 
@@ -150,5 +193,19 @@ export class FallbackSearchProvider implements SearchProvider {
  */
 export function createSearchProvider(config: PipelineConfig): SearchProvider | null {
   const providers = createSearchProviders(config);
-  return providers.length ? new FallbackSearchProvider(providers) : null;
+  if (!providers.length) return null;
+
+  const cacheKey = [
+    providers.map((provider) => provider.name).join(','),
+    fingerprint(
+      JSON.stringify({
+        searxngUrl: config.searxngUrl ?? '',
+        braveApiKey: config.braveApiKey ?? '',
+        serperApiKey: config.serperApiKey ?? '',
+        fallbackEnabled: config.searchFallbackEnabled !== false,
+      }),
+    ),
+  ].join('|');
+
+  return new FallbackSearchProvider(providers, cacheKey);
 }

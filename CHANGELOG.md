@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Brave, Serper and SearXNG fields, fallback controls, and usage/cost links in
   the desktop/web Settings panel. Per-request search keys bypass the queue and
   are never persisted on the server.
+- A 10-minute in-process cache for identical web-search queries and provider
+  configuration, shared by desktop and server.
+- A hosted search quota (`HONEYGUIDE_SEARCH_LIMIT`, default 20/minute per IP)
+  for requests that use the server's own search keys. BYO search credentials
+  bypass it. `/api/health` advertises the limit and Settings shows it.
 
 ## [0.7.5] - 2026-11-17
 
